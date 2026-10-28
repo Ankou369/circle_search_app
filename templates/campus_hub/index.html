@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="min-h-screen w-full bg-slate-50 text-slate-800 flex flex-col relative">
+
+    <!-- ログイン・新規登録 -->
+    {% include "campus_hub/auth.html" %}
+
+    <!-- 相性診断 -->
+    {% include "campus_hub/diagnostic.html" %}
+
+    <!-- 学生向け画面 -->
+    {% include "campus_hub/student/home.html" %}
+    {% include "campus_hub/student/discover.html" %}
+    {% include "campus_hub/student/list.html" %}
+    {% include "campus_hub/student/dm.html" %}
+    {% include "campus_hub/student/profile.html" %}
+
+    <!-- 学生向けメニュー -->
+    {% include "campus_hub/student/navigation.html" %}
+
+    <!-- 幹部向け画面 -->
+    {% include "campus_hub/leader/home.html" %}
+    {% include "campus_hub/leader/dm.html" %}
+    {% include "campus_hub/leader/settings.html" %}
+
+    <!-- 幹部向けメニュー -->
+    {% include "campus_hub/leader/navigation.html" %}
+
+</div>
+
+{% endblock %}

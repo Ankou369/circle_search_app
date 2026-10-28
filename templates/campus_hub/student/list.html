@@ -1,0 +1,28 @@
+<!-- 3-3: 一覧 (検索メニュー) -->
+<div id="screen-student-list" class="screen-content h-full flex flex-col bg-slate-50 hidden fade-in">
+    <div class="bg-white p-3 border-b border-slate-200 sticky top-0 z-20">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="text" placeholder="サークル名・キーワードで検索" class="w-full bg-slate-100 text-xs pl-8 pr-3 py-2 rounded-xl outline-none">
+        </div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2 pb-24">
+        <h4 class="text-xs font-bold text-slate-500 mb-2 px-1">すべてのサークル・部活</h4>
+        
+        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between active:bg-slate-50 transition cursor-pointer">
+            <div class="flex items-center gap-3">
+                <img src="https://images.unsplash.com/photo-1517649763962-0c623266200b?w=150" class="w-10 h-10 rounded-lg object-cover">
+                <div><h5 class="text-xs font-bold text-slate-800">体育会サッカー部</h5><p class="text-[10px] text-slate-500 mt-0.5">運動系 | 64名</p></div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+        </div>
+        
+        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between active:bg-slate-50 transition cursor-pointer">
+            <div class="flex items-center gap-3">
+                <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" class="w-10 h-10 rounded-lg object-cover">
+                <div><h5 class="text-xs font-bold text-slate-800">軽音サークル ACE</h5><p class="text-[10px] text-slate-500 mt-0.5">文化系 | 120名</p></div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+        </div>
+    </div>
+</div>

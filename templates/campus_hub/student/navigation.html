@@ -1,0 +1,30 @@
+<!-- 学生用 ボトムナビ -->
+<div id="nav-student" class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-between items-center z-30 hidden">
+
+    <button onclick="switchScreen('student-home')" id="tab-student-home" class="w-1/5 flex flex-col items-center gap-1 text-brand-600">
+        <i class="fa-solid fa-house text-lg"></i>
+        <span class="text-[9px] font-bold">ホーム</span>
+    </button>
+
+    <button onclick="switchScreen('student-discover')" id="tab-student-discover" class="w-1/5 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700">
+        <i class="fa-solid fa-compass text-lg"></i>
+        <span class="text-[9px] font-bold">発見</span>
+    </button>
+
+    <button onclick="switchScreen('student-list')" id="tab-student-list" class="w-1/5 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700">
+        <i class="fa-solid fa-list-ul text-lg"></i>
+        <span class="text-[9px] font-bold">一覧</span>
+    </button>
+
+    <button onclick="switchScreen('student-dm')" id="tab-student-dm" class="w-1/5 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 relative">
+        <i class="fa-solid fa-comment-dots text-lg"></i>
+        <span class="text-[9px] font-bold">DM</span>
+        <span class="absolute top-0 right-3 w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+    </button>
+
+    <button onclick="switchScreen('student-profile')" id="tab-student-profile" class="w-1/5 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700">
+        <i class="fa-solid fa-user text-lg"></i>
+        <span class="text-[9px] font-bold">マイページ</span>
+    </button>
+
+</div>

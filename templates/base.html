@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}CampusHub{% endblock %}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 共通CSS -->
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/campus_hub.css') }}">
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/auth.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/likes.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+
+<body class="min-h-screen bg-slate-50 text-slate-800">
+
+    {% block content %}
+    {% endblock %}
+
+</body>
+</html>

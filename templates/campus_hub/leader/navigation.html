@@ -1,0 +1,23 @@
+<!-- 幹部用 ボトムナビ -->
+<div id="nav-leader" class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-8 py-2 flex justify-between items-center z-30 hidden">
+
+    <!-- 管理画面 -->
+    <button onclick="switchScreen('leader-home')" id="tab-leader-home" class="flex flex-col items-center gap-1 text-leader-600">
+        <i class="fa-solid fa-chart-pie text-lg"></i>
+        <span class="text-[9px] font-bold">管理</span>
+    </button>
+
+    <!-- 問い合わせ -->
+    <button onclick="switchScreen('leader-dm')" id="tab-leader-dm" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 relative">
+        <i class="fa-solid fa-comment-dots text-lg"></i>
+        <span class="text-[9px] font-bold">問い合わせ</span>
+        <span class="absolute top-0 -right-1 w-1.5 h-1.5 bg-leader-500 rounded-full"></span>
+    </button>
+
+    <!-- 設定 -->
+    <button onclick="switchScreen('leader-settings')" id="tab-leader-settings" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700">
+        <i class="fa-solid fa-gear text-lg"></i>
+        <span class="text-[9px] font-bold">設定</span>
+    </button>
+
+</div>

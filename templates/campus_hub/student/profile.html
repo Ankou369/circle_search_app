@@ -1,0 +1,31 @@
+<!-- 3-5: マイページ (学生用) -->
+<div id="screen-student-profile" class="screen-content h-full flex flex-col bg-slate-50 hidden fade-in">
+    <div class="bg-white p-3 border-b border-slate-200 sticky top-0 z-20 flex justify-between items-center">
+        <span class="font-bold text-sm">マイページ</span>
+        <i class="fa-solid fa-gear text-slate-400"></i>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-5 pb-24">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-sm">
+            <div class="w-16 h-16 rounded-full bg-slate-200 mx-auto mb-2 text-2xl flex items-center justify-center">👦</div>
+            <h3 class="text-sm font-bold text-slate-800">キャンパス 太郎</h3>
+            <p class="text-[10px] text-slate-500 mt-1">経済学部 1年生</p>
+        </div>
+
+        <button onclick="switchScreen('diagnostic')" class="w-full bg-white border border-brand-200 p-3 rounded-xl flex items-center justify-between shadow-sm active:scale-95 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-500 flex items-center justify-center"><i class="fa-solid fa-wand-magic-sparkles text-sm"></i></div>
+                <div class="text-left"><h4 class="text-xs font-bold text-slate-800">相性診断をやり直す</h4></div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+        </button>
+
+        <div>
+            <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1"><i class="fa-regular fa-thumbs-up mr-1.5"></i>いいねしたサークル</h4>
+            <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                <div class="p-3 text-xs font-medium flex items-center justify-between">
+                    <span>体育会サッカー部</span><i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
