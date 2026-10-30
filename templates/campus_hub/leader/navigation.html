@@ -1,23 +1,15 @@
-<!-- 幹部用 ボトムナビ -->
-<div id="nav-leader" class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-8 py-2 flex justify-between items-center z-30 hidden">
-
-    <!-- 管理画面 -->
-    <button onclick="switchScreen('leader-home')" id="tab-leader-home" class="flex flex-col items-center gap-1 text-leader-600">
-        <i class="fa-solid fa-chart-pie text-lg"></i>
-        <span class="text-[9px] font-bold">管理</span>
-    </button>
-
-    <!-- 問い合わせ -->
-    <button onclick="switchScreen('leader-dm')" id="tab-leader-dm" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 relative">
-        <i class="fa-solid fa-comment-dots text-lg"></i>
-        <span class="text-[9px] font-bold">問い合わせ</span>
-        <span class="absolute top-0 -right-1 w-1.5 h-1.5 bg-leader-500 rounded-full"></span>
-    </button>
-
-    <!-- 設定 -->
-    <button onclick="switchScreen('leader-settings')" id="tab-leader-settings" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700">
-        <i class="fa-solid fa-gear text-lg"></i>
-        <span class="text-[9px] font-bold">設定</span>
-    </button>
-
+<!-- 幹部用 下部ナビゲーション（リンクで画面遷移し、選択中タブはサーバー側の active で決める） -->
+<div class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30">
+    <div class="flex justify-between items-center px-8 py-2">
+        <a href="/leader" class="flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-home' else 'text-slate-400 hover:text-slate-700' }}">
+            <i class="fa-solid fa-gauge text-xl"></i><span class="text-[9px] font-bold">管理</span>
+        </a>
+        <a href="/leader/dm" class="flex flex-col items-center gap-1 relative {{ 'text-leader-600' if active == 'leader-dm' else 'text-slate-400 hover:text-slate-700' }}">
+            <i class="fa-regular fa-comments text-xl"></i><span class="text-[9px] font-bold">問い合わせ</span>
+            <span class="absolute top-0 right-1/2 translate-x-4 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+        </a>
+        <a href="/leader/settings" class="flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-settings' else 'text-slate-400 hover:text-slate-700' }}">
+            <i class="fa-solid fa-gear text-xl"></i><span class="text-[9px] font-bold">設定</span>
+        </a>
+    </div>
 </div>

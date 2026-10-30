@@ -1,30 +1,25 @@
 import os
 import sqlite3
 
-from flask import Flask, flash, g, redirect, render_template, request, send_from_directory
-from flask_login import (
-    LoginManager,
-    UserMixin,
-    current_user,
-    login_required,
-    login_user,
-    logout_user,
-)
+from flask import (Flask, flash, g, redirect, render_template, request,
+                   send_from_directory, url_for)
+from flask_login import (LoginManager, UserMixin, current_user, login_required,
+                         login_user, logout_user)
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
+# データベースのファイル名（初回起動時に自動作成される）
 DATABASE = "campus_hub.db"
-UPLOAD_FOLDER = "uploads"
 
 app = Flask(__name__)
-# NOTE: 掲示板アプリでは os.urandom(24) で起動ごとに変わり、再起動で全員ログアウトしていた。
-# 合体版では環境変数 SECRET_KEY があればそれを使い、無ければ開発用の固定値にする。
+# セッション署名用の秘密鍵（環境変数があればそれを使い、無ければ開発用）
 app.secret_key = os.environ.get("SECRET_KEY", "campus-hub-dev-secret")
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+# ログイン管理（Flask-Login）
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs("uploads", exist_ok=True)
 
 
 class User(UserMixin):
@@ -33,8 +28,6 @@ class User(UserMixin):
 
 
 ### データベース ############################
-# NOTE: 掲示板アプリでは get_db() が app.run() より後ろに定義されていて
-# `python app.py` 起動時に NameError になったため、合体版では前に置いている。
 
 def connect_db():
     rv = sqlite3.connect(DATABASE)
@@ -49,57 +42,72 @@ def get_db():
 
 
 def init_db():
-    db = sqlite3.connect(DATABASE)
-    db.executescript(
-        """
+    db = connect_db()
+    # 学生（個人ユーザー）
+    db.execute("""
         CREATE TABLE IF NOT EXISTS user (
-            userid TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userid TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            user_type TEXT,
             name TEXT,
             faculty TEXT
-        );
+        )
+    """)
+    # サークルアカウント
+    db.execute("""
         CREATE TABLE IF NOT EXISTS circle_account (
-            circle_id TEXT PRIMARY KEY,
-            password TEXT NOT NULL,
-            user_type TEXT NOT NULL
-        );
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            circle_id TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    # 投稿
+    db.execute("""
         CREATE TABLE IF NOT EXISTS post (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userid TEXT NOT NULL,
+            name TEXT,
             title TEXT,
             comment TEXT,
-            image TEXT,
-            userid TEXT
-        );
+            image_path TEXT
+        )
+    """)
+    # フォロー関係
+    db.execute("""
         CREATE TABLE IF NOT EXISTS follow_table (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            follower_id TEXT NOT NULL,
-            following_id TEXT NOT NULL
-        );
+            user_id TEXT NOT NULL,
+            follow_id TEXT NOT NULL
+        )
+    """)
+    # サークル情報
+    db.execute("""
         CREATE TABLE IF NOT EXISTS circle_info (
-            circle_id TEXT,
-            name TEXT,
-            time TEXT,
-            place TEXT,
-            activity_details TEXT
-        );
-        CREATE TABLE IF NOT EXISTS circle_number_of_students (
-            circle_id TEXT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            circle_id TEXT NOT NULL,
             circle_name TEXT,
-            multicultural_count INTEGER DEFAULT 0,
-            education_count INTEGER DEFAULT 0,
-            economics_count INTEGER DEFAULT 0,
-            medicine_count INTEGER DEFAULT 0,
-            health_count INTEGER DEFAULT 0,
-            dentistry_count INTEGER DEFAULT 0,
-            pharmacy_count INTEGER DEFAULT 0,
-            data_science_count INTEGER DEFAULT 0,
-            engineering_count INTEGER DEFAULT 0,
-            environment_count INTEGER DEFAULT 0,
-            fisheries_count INTEGER DEFAULT 0
-        );
-        """
-    )
+            circle_time TEXT,
+            circle_place TEXT,
+            activity_details TEXT
+        )
+    """)
+    # サークルの学部別人数
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS circle_number_of_students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            circle_id TEXT NOT NULL,
+            information_and_data_science INTEGER DEFAULT 0,
+            multicultural_society INTEGER DEFAULT 0,
+            education INTEGER DEFAULT 0,
+            economics INTEGER DEFAULT 0,
+            medicine INTEGER DEFAULT 0,
+            dentistry INTEGER DEFAULT 0,
+            pharmacy INTEGER DEFAULT 0,
+            engineering INTEGER DEFAULT 0,
+            environmental_science INTEGER DEFAULT 0,
+            fisheries INTEGER DEFAULT 0
+        )
+    """)
     db.commit()
     db.close()
 
@@ -116,229 +124,289 @@ def load_user(userid):
 
 @login_manager.unauthorized_handler
 def unauthorized():
-    return redirect("/")
+    return redirect("/login")
 
 
 def get_user_type(user_id):
-    """掲示板アプリと同じ方式: user → circle_account の順に探して user_type を返す。"""
-    if user_id is None:
-        return None
+    """user テーブルにあれば学生、circle_account にあればサークル幹部。"""
     db = get_db()
-    row = db.execute("SELECT user_type FROM user WHERE userid = ?", (user_id,)).fetchone()
-    if row is None:
-        row = db.execute(
-            "SELECT user_type FROM circle_account WHERE circle_id = ?", (user_id,)
-        ).fetchone()
-    return row[0] if row is not None else None
+    if db.execute("SELECT id FROM user WHERE userid = ?", (user_id,)).fetchone():
+        return "normal_user"
+    if db.execute("SELECT id FROM circle_account WHERE circle_id = ?", (user_id,)).fetchone():
+        return "circle_user"
+    return None
+
+
+def current_type():
+    """ログイン中のアカウント種別（未ログインなら None）。"""
+    if not current_user.is_authenticated:
+        return None
+    return get_user_type(current_user.id)
 
 
 def circle_display_name(db, circle_id):
     row = db.execute(
-        "SELECT name FROM circle_info WHERE circle_id = ? LIMIT 1", (circle_id,)
+        "SELECT circle_name FROM circle_info WHERE circle_id = ?", (circle_id,)
     ).fetchone()
-    if row is not None and row["name"]:
-        return row["name"]
+    if row and row["circle_name"]:
+        return row["circle_name"]
     return circle_id
 
 
-### ホーム（CampusHub の1ページ） ############
+def get_posts(db):
+    return db.execute("""
+        SELECT post.*,
+               (SELECT circle_name FROM circle_info
+                 WHERE circle_info.circle_id = post.userid) AS display_name
+          FROM post ORDER BY post.id DESC
+    """).fetchall()
 
-def render_home(error_message="", auth_role="student", auth_mode="login", initial_screen=None):
-    posts = []
-    follow_list = []
-    circles = []
-    student_info = None
-    leader_info = None
-    leader_circle_name = None
 
-    if current_user.is_authenticated:
-        db = get_db()
-        posts = db.execute(
-            """
-            SELECT post.*,
-                   (SELECT name FROM circle_info
-                     WHERE circle_id = post.userid LIMIT 1) AS display_name
-            FROM post
-            ORDER BY id DESC
-            """
-        ).fetchall()
+def get_follow_list(db, user_id):
+    rows = db.execute(
+        "SELECT follow_id FROM follow_table WHERE user_id = ?", (user_id,)
+    ).fetchall()
+    return [row[0] for row in rows]
 
-        rows = db.execute(
-            "SELECT following_id FROM follow_table WHERE follower_id = ?",
-            (current_user.id,),
-        ).fetchall()
-        follow_list = [row["following_id"] for row in rows]
 
-        circles = db.execute(
-            """
-            SELECT circle_account.circle_id,
-                   (SELECT name FROM circle_info
-                     WHERE circle_id = circle_account.circle_id LIMIT 1) AS name
-            FROM circle_account
-            ORDER BY circle_account.circle_id
-            """
-        ).fetchall()
+def get_circles(db):
+    return db.execute("""
+        SELECT circle_account.circle_id AS circle_id,
+               (SELECT circle_name FROM circle_info
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS circle_name
+          FROM circle_account ORDER BY circle_account.id
+    """).fetchall()
 
-        user_type = get_user_type(current_user.id)
-        if user_type == "circle_user":
-            leader_info = db.execute(
-                "SELECT * FROM circle_account WHERE circle_id = ?", (current_user.id,)
-            ).fetchone()
-            leader_circle_name = circle_display_name(db, current_user.id)
-            if initial_screen is None:
-                initial_screen = "leader-home"
-        else:
-            student_info = db.execute(
-                "SELECT * FROM user WHERE userid = ?", (current_user.id,)
-            ).fetchone()
-            if initial_screen is None:
-                initial_screen = "student-home"
-    else:
-        user_type = None
-        if initial_screen is None:
-            initial_screen = "auth"
 
+### 認証ページ（学生） #########################
+# 役割タブとログイン/登録の切り替えも、リンクで別URLに分けてサーバー側で管理する。
+
+def render_auth(role, mode, error_message="", id_value=""):
     return render_template(
-        "campus_hub/index.html",
-        posts=posts,
-        follow_list=follow_list,
-        circles=circles,
-        student_info=student_info,
-        leader_info=leader_info,
-        leader_circle_name=leader_circle_name,
-        now_user_type=user_type,
+        "campus_hub/auth.html",
+        role=role,
+        mode=mode,
         error_message=error_message,
-        auth_role=auth_role,
-        auth_mode=auth_mode,
-        initial_screen=initial_screen,
+        id_value=id_value,
     )
 
 
-@app.route("/")
-def index():
-    return render_home()
-
-
-@app.route("/campus-hub")
-def campus_hub():
-    return render_home()
-
-
-### 新規登録・ログイン（学生） ###############
-
-@app.route("/signup", methods=["POST"])
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
+    if current_user.is_authenticated:
+        return redirect("/")
+    if request.method == "GET":
+        return render_auth("student", "register")
     userid = request.form.get("userid")
     password = request.form.get("password")
     name = request.form.get("name")
     faculty = request.form.get("faculty")
-    pass_hash = generate_password_hash(password)
-
+    if not userid or not password:
+        return render_auth("student", "register", "メールアドレスとパスワードを入力してください。", userid or "")
+    password_hash = generate_password_hash(password)
     db = get_db()
-    user_check = db.execute(
-        "SELECT userid FROM user WHERE userid = ?", (userid,)
-    ).fetchall()
-    if not user_check:
-        db.execute(
-            "INSERT INTO user (userid, password, user_type, name, faculty)"
-            " VALUES (?, ?, 'normal_user', ?, ?)",
-            (userid, pass_hash, name, faculty),
-        )
-        db.commit()
-        flash("登録が完了しました。ログインしてください。")
-        return redirect("/")
-    return render_home(
-        error_message="入力されたユーザIDはすでに利用されています",
-        auth_role="student",
-        auth_mode="register",
-        initial_screen="auth",
+    if db.execute("SELECT id FROM user WHERE userid = ?", (userid,)).fetchone():
+        return render_auth("student", "register", "このIDはすでに使われています。", userid)
+    db.execute(
+        "INSERT INTO user (userid, password, name, faculty) VALUES (?, ?, ?, ?)",
+        (userid, password_hash, name, faculty),
     )
+    db.commit()
+    flash("登録が完了しました。ログインしてください。")
+    return redirect("/login")
 
 
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    if current_user.is_authenticated:
+        return redirect("/")
+    if request.method == "GET":
+        return render_auth("student", "login")
     userid = request.form.get("userid")
     password = request.form.get("password")
-
-    user_data = get_db().execute(
-        "SELECT password FROM user WHERE userid = ?", (userid,)
-    ).fetchone()
-
-    if user_data is not None and check_password_hash(user_data[0], password):
+    db = get_db()
+    user = db.execute("SELECT * FROM user WHERE userid = ?", (userid,)).fetchone()
+    if user and check_password_hash(user["password"], password):
         login_user(User(userid))
         return redirect("/")
-
-    return render_home(
-        error_message="入力されたIDもしくはパスワードが誤っています",
-        auth_role="student",
-        auth_mode="login",
-        initial_screen="auth",
-    )
+    return render_auth("student", "login", "IDかパスワードが誤っています。", userid or "")
 
 
-### 新規登録・ログイン（サークル幹部） ########
+### 認証ページ（サークル幹部） ###################
 
-@app.route("/circle_signup", methods=["POST"])
+@app.route("/circle_signup", methods=["GET", "POST"])
 def circle_signup():
-    circle_id = request.form.get("circle_id")
-    password = request.form.get("password")
+    if current_user.is_authenticated:
+        return redirect("/")
+    if request.method == "GET":
+        return render_auth("leader", "register")
     circle_name = request.form.get("circle_name")
-    pass_hash = generate_password_hash(password)
-
-    db = get_db()
-    # NOTE: 掲示板アプリでは重複チェックが user テーブルを見ていた誤りを修正し、
-    # circle_account テーブルを見るようにした。
-    circle_check = db.execute(
-        "SELECT circle_id FROM circle_account WHERE circle_id = ?", (circle_id,)
-    ).fetchall()
-    if not circle_check:
-        db.execute(
-            "INSERT INTO circle_account (circle_id, password, user_type)"
-            " VALUES (?, ?, 'circle_user')",
-            (circle_id, pass_hash),
-        )
-        if circle_name:
-            db.execute(
-                "INSERT INTO circle_info (circle_id, name) VALUES (?, ?)",
-                (circle_id, circle_name),
-            )
-        db.commit()
-        flash("サークル登録が完了しました。ログインしてください。")
-        return redirect("/")
-    return render_home(
-        error_message="入力されたサークルIDはすでに利用されています",
-        auth_role="leader",
-        auth_mode="register",
-        initial_screen="auth",
-    )
-
-
-@app.route("/circle_login", methods=["POST"])
-def circle_login():
-    circle_id = request.form.get("circle_id")
+    circle_id = request.form.get("userid")
     password = request.form.get("password")
-
-    user_data = get_db().execute(
-        "SELECT password FROM circle_account WHERE circle_id = ?", (circle_id,)
-    ).fetchone()
-
-    if user_data is not None and check_password_hash(user_data[0], password):
-        login_user(User(circle_id))
-        return redirect("/")
-
-    return render_home(
-        error_message="入力されたIDもしくはパスワードが誤っています",
-        auth_role="leader",
-        auth_mode="login",
-        initial_screen="auth",
+    if not circle_id or not password:
+        return render_auth("leader", "register", "サークルIDとパスワードを入力してください。", circle_id or "")
+    password_hash = generate_password_hash(password)
+    db = get_db()
+    if db.execute("SELECT id FROM circle_account WHERE circle_id = ?", (circle_id,)).fetchone():
+        return render_auth("leader", "register", "このサークルIDはすでに使われています。", circle_id)
+    db.execute(
+        "INSERT INTO circle_account (circle_id, password) VALUES (?, ?)",
+        (circle_id, password_hash),
     )
+    db.execute(
+        "INSERT INTO circle_info (circle_id, circle_name) VALUES (?, ?)",
+        (circle_id, circle_name),
+    )
+    db.commit()
+    flash("サークル登録が完了しました。ログインしてください。")
+    return redirect("/circle_login")
+
+
+@app.route("/circle_login", methods=["GET", "POST"])
+def circle_login():
+    if current_user.is_authenticated:
+        return redirect("/")
+    if request.method == "GET":
+        return render_auth("leader", "login")
+    circle_id = request.form.get("userid")
+    password = request.form.get("password")
+    db = get_db()
+    circle = db.execute(
+        "SELECT * FROM circle_account WHERE circle_id = ?", (circle_id,)
+    ).fetchone()
+    if circle and check_password_hash(circle["password"], password):
+        login_user(User(circle_id))
+        return redirect("/leader")
+    return render_auth("leader", "login", "IDかパスワードが誤っています。", circle_id or "")
 
 
 @app.route("/logout", methods=["GET"])
 @login_required
 def logout():
     logout_user()
+    return redirect("/login")
+
+
+### 学生の画面 ################################
+
+@app.route("/")
+def index():
+    if not current_user.is_authenticated:
+        return redirect("/login")
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    db = get_db()
+    return render_template(
+        "campus_hub/student/home.html",
+        nav="student",
+        active="home",
+        posts=get_posts(db),
+        follow_list=get_follow_list(db, current_user.id),
+    )
+
+
+@app.route("/campus-hub")
+def campus_hub():
     return redirect("/")
+
+
+@app.route("/discover")
+@login_required
+def discover():
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    return render_template(
+        "campus_hub/student/discover.html", nav="student", active="discover"
+    )
+
+
+@app.route("/list")
+@login_required
+def circle_list_page():
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    db = get_db()
+    return render_template(
+        "campus_hub/student/list.html",
+        nav="student",
+        active="list",
+        circles=get_circles(db),
+    )
+
+
+@app.route("/dm")
+@login_required
+def student_dm():
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    return render_template(
+        "campus_hub/student/dm.html", nav="student", active="dm"
+    )
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    db = get_db()
+    student_info = db.execute(
+        "SELECT name, faculty FROM user WHERE userid = ?", (current_user.id,)
+    ).fetchone()
+    return render_template(
+        "campus_hub/student/profile.html",
+        nav="student",
+        active="profile",
+        student_info=student_info,
+    )
+
+
+@app.route("/diagnostic")
+@login_required
+def diagnostic():
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    return render_template("campus_hub/diagnostic.html")
+
+
+### 幹部の画面 ################################
+
+@app.route("/leader")
+@login_required
+def leader_home():
+    if current_type() != "circle_user":
+        return redirect("/")
+    db = get_db()
+    return render_template(
+        "campus_hub/leader/home.html",
+        nav="leader",
+        active="leader-home",
+        leader_circle_name=circle_display_name(db, current_user.id),
+    )
+
+
+@app.route("/leader/dm")
+@login_required
+def leader_dm():
+    if current_type() != "circle_user":
+        return redirect("/")
+    return render_template(
+        "campus_hub/leader/dm.html", nav="leader", active="leader-dm"
+    )
+
+
+@app.route("/leader/settings")
+@login_required
+def leader_settings():
+    if current_type() != "circle_user":
+        return redirect("/")
+    db = get_db()
+    return render_template(
+        "campus_hub/leader/settings.html",
+        nav="leader",
+        active="leader-settings",
+        leader_circle_name=circle_display_name(db, current_user.id),
+    )
 
 
 ### 投稿 ####################################
@@ -346,33 +414,31 @@ def logout():
 @app.route("/post", methods=["POST"])
 @login_required
 def post():
-    # 掲示板アプリと同じく、投稿できるのはサークルアカウントだけ
     if get_user_type(current_user.id) != "circle_user":
         return redirect("/")
-
-    title = request.form.get("title")
-    comment = request.form.get("comment")
+    name = request.form["name"]
+    title = request.form["title"]
+    comment = request.form["comment"]
     image = request.files.get("image")
-
-    filename = None
-    if image and image.filename != "":
-        filename = image.filename
-        image.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-
+    image_path = None
+    if image and image.filename:
+        filename = secure_filename(image.filename)
+        image.save(os.path.join("uploads", filename))
+        image_path = filename
     db = get_db()
     db.execute(
-        "INSERT INTO post (title, comment, image, userid) VALUES (?, ?, ?, ?)",
-        (title, comment, filename, current_user.id),
+        "INSERT INTO post (userid, name, title, comment, image_path) VALUES (?, ?, ?, ?, ?)",
+        (current_user.id, name, title, comment, image_path),
     )
     db.commit()
-    return redirect("/")
+    return redirect("/leader")
 
 
 @app.route("/reset", methods=["POST"])
 @login_required
 def reset():
+    post_id = request.form["post_id"]
     db = get_db()
-    post_id = request.form.get("id")
     db.execute(
         "DELETE FROM post WHERE id = ? AND userid = ?", (post_id, current_user.id)
     )
@@ -383,7 +449,7 @@ def reset():
 @app.route("/uploads/<filename>")
 @login_required
 def uploaded_file(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+    return send_from_directory("uploads", filename)
 
 
 ### フォロー ################################
@@ -391,28 +457,27 @@ def uploaded_file(filename):
 @app.route("/follow", methods=["POST"])
 @login_required
 def follow():
-    follow_userid = request.form.get("follow_userid")
-
+    follow_id = request.form["follow_id"]
+    if follow_id == current_user.id:
+        return redirect(request.referrer or "/")
     db = get_db()
     result = db.execute(
         """
         SELECT EXISTS(
-            SELECT 1 FROM follow_table
-            WHERE follower_id = ? AND following_id = ?
+            SELECT 1 FROM follow_table WHERE user_id = ? AND follow_id = ?
         )
         """,
-        (current_user.id, follow_userid),
+        (current_user.id, follow_id),
     ).fetchone()
-
-    if result[0]:
+    if result[0] == 0:
         db.execute(
-            "DELETE FROM follow_table WHERE follower_id = ? AND following_id = ?",
-            (current_user.id, follow_userid),
+            "INSERT INTO follow_table (user_id, follow_id) VALUES (?, ?)",
+            (current_user.id, follow_id),
         )
     else:
         db.execute(
-            "INSERT INTO follow_table (follower_id, following_id) VALUES (?, ?)",
-            (current_user.id, follow_userid),
+            "DELETE FROM follow_table WHERE user_id = ? AND follow_id = ?",
+            (current_user.id, follow_id),
         )
     db.commit()
     return redirect(request.referrer or "/")
@@ -429,39 +494,31 @@ def circle_account(circle_id):
     ).fetchone()
     if circle is None:
         return redirect("/")
-
     posts = db.execute(
         "SELECT * FROM post WHERE userid = ? ORDER BY id DESC", (circle_id,)
     ).fetchall()
-
-    follower_count = db.execute(
-        "SELECT COUNT(*) FROM follow_table WHERE following_id = ?", (circle_id,)
+    follower = db.execute(
+        "SELECT COUNT(*) FROM follow_table WHERE follow_id = ?", (circle_id,)
     ).fetchone()[0]
-    following_count = db.execute(
-        "SELECT COUNT(*) FROM follow_table WHERE follower_id = ?", (circle_id,)
+    following = db.execute(
+        "SELECT COUNT(*) FROM follow_table WHERE user_id = ?", (circle_id,)
     ).fetchone()[0]
-
     circle_info = db.execute(
         "SELECT * FROM circle_info WHERE circle_id = ?", (circle_id,)
     ).fetchone()
-
-    is_following = (
-        db.execute(
-            "SELECT 1 FROM follow_table WHERE follower_id = ? AND following_id = ?",
-            (current_user.id, circle_id),
-        ).fetchone()
-        is not None
-    )
-
+    row = db.execute(
+        "SELECT 1 FROM follow_table WHERE user_id = ? AND follow_id = ?",
+        (current_user.id, circle_id),
+    ).fetchone()
     return render_template(
         "campus_hub/circle_detail.html",
         circle=circle,
         circle_name=circle_display_name(db, circle_id),
         posts=posts,
-        follower_count=follower_count,
-        following_count=following_count,
+        follower=follower,
+        following=following,
         circle_info=circle_info,
-        is_following=is_following,
+        is_following=row is not None,
         now_user_type=get_user_type(current_user.id),
     )
 
@@ -471,47 +528,44 @@ def circle_account(circle_id):
 @app.route("/regist_circle_info/<string:circle_id>", methods=["GET", "POST"])
 @login_required
 def regist_circle_info(circle_id):
-    # 自分のサークルの情報だけ編集できる
     if current_user.id != circle_id:
         return redirect("/")
-
     db = get_db()
-    circle = db.execute(
-        "SELECT * FROM circle_account WHERE circle_id = ?", (circle_id,)
-    ).fetchone()
-    if circle is None:
-        return redirect("/")
-
     if request.method == "POST":
         circle_name = request.form.get("circle_name")
-        activity_time = request.form.get("activity_time")
-        activity_place = request.form.get("activity_place")
+        circle_time = request.form.get("circle_time")
+        circle_place = request.form.get("circle_place")
         activity_details = request.form.get("activity_details")
-
         existing = db.execute(
-            "SELECT * FROM circle_info WHERE circle_id = ?", (circle_id,)
+            "SELECT id FROM circle_info WHERE circle_id = ?", (circle_id,)
         ).fetchone()
-        if existing is None:
+        if existing:
             db.execute(
-                "INSERT INTO circle_info (circle_id, name, time, place, activity_details)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (circle_id, circle_name, activity_time, activity_place, activity_details),
+                """
+                UPDATE circle_info
+                   SET circle_name = ?, circle_time = ?, circle_place = ?,
+                       activity_details = ?
+                 WHERE circle_id = ?
+                """,
+                (circle_name, circle_time, circle_place, activity_details, circle_id),
             )
         else:
             db.execute(
-                "UPDATE circle_info SET name = ?, time = ?, place = ?,"
-                " activity_details = ? WHERE circle_id = ?",
-                (circle_name, activity_time, activity_place, activity_details, circle_id),
+                """
+                INSERT INTO circle_info
+                    (circle_id, circle_name, circle_time, circle_place, activity_details)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (circle_id, circle_name, circle_time, circle_place, activity_details),
             )
         db.commit()
-        return redirect(f"/circle/{circle_id}")
-
+        return redirect(url_for("circle_account", circle_id=circle_id))
     circle_info = db.execute(
         "SELECT * FROM circle_info WHERE circle_id = ?", (circle_id,)
     ).fetchone()
     return render_template(
         "campus_hub/regist_circle_info.html",
-        circle=circle,
+        circle_id=circle_id,
         circle_info=circle_info,
     )
 

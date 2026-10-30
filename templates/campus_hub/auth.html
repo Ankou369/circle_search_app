@@ -1,138 +1,96 @@
-<!-- ログイン・新規登録画面（掲示板アプリの認証を移植し、実フォームにした） -->
-<div id="screen-auth"
-     class="screen-content min-h-screen flex flex-col justify-start p-5 overflow-y-auto bg-white">
-
-    <div>
-        <div class="mt-8 text-center">
-            <div class="w-16 h-16 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <i class="fa-solid fa-graduation-cap text-3xl"></i>
-            </div>
-
-            <h2 id="auth-title" class="text-2xl font-bold">
-                ログイン
-            </h2>
-
-            <p class="text-xs text-slate-500 mt-1">
-                CampusHubへようこそ
-            </p>
+{% extends "base.html" %}
+{% block content %}
+{# 認証画面: 役割(role)とモード(mode)はサーバー側で決まる。タブと切替はリンク。 #}
+<div class="min-h-screen w-full bg-white flex flex-col p-5 fade-in">
+    <div class="flex-1 flex flex-col justify-center max-w-md mx-auto w-full py-8">
+        <div class="text-center mb-6">
+            <div class="w-14 h-14 bg-brand-600 text-white rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg shadow-brand-200"><i class="fa-solid fa-graduation-cap"></i></div>
+            <h1 class="text-xl font-black mt-3 tracking-tight">CampusHub</h1>
+            <p class="text-[11px] text-slate-500 mt-1 font-medium">大学サークル検索・マッチングアプリ</p>
         </div>
 
-        {% if error_message %}
-        <p class="mt-4 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl p-3">{{ error_message }}</p>
+        <div class="bg-slate-100 p-1 rounded-xl flex mb-6 relative">
+            <a href="{{ '/signup' if mode == 'register' else '/login' }}" class="flex-1 py-2 rounded-lg text-xs font-bold text-center transition-all {{ 'bg-white shadow text-brand-600' if role == 'student' else 'text-slate-500' }}">
+                <i class="fa-solid fa-user mr-1"></i> 個人（学生）
+            </a>
+            <a href="{{ '/circle_signup' if mode == 'register' else '/circle_login' }}" class="flex-1 py-2 rounded-lg text-xs font-bold text-center transition-all {{ 'bg-white shadow text-leader-600' if role == 'leader' else 'text-slate-500' }}">
+                <i class="fa-solid fa-users mr-1"></i> サークル幹部
+            </a>
+        </div>
+
+        <h2 class="text-base font-bold text-center mb-4">
+            {% if mode == 'register' %}新規登録{% else %}ログイン{% endif %}
+            <span class="text-xs font-medium text-slate-400">（{{ 'サークル幹部' if role == 'leader' else '学生' }}）</span>
+        </h2>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="mb-4 text-xs font-bold text-brand-700 bg-brand-50 border border-brand-200 rounded-xl px-3 py-2">
+            {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+        </div>
         {% endif %}
-        {% for message in get_flashed_messages() %}
-        <p class="mt-4 text-xs font-bold text-brand-600 bg-brand-50 border border-brand-100 rounded-xl p-3">{{ message }}</p>
-        {% endfor %}
+        {% endwith %}
+        {% if error_message %}
+        <div class="mb-4 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{{ error_message }}</div>
+        {% endif %}
 
-        <!-- 学生・幹部の切り替え -->
-        <div class="mt-6 bg-slate-100 p-1 rounded-xl flex text-xs font-bold">
-            <button
-                type="button"
-                id="auth-tab-student"
-                onclick="setAuthRole('student')"
-                class="w-1/2 py-2.5 rounded-lg bg-white text-brand-600 shadow-sm transition">
-                個人（学生）
+        {% if role == 'student' %}
+        <form method="POST" action="{{ '/signup' if mode == 'register' else '/login' }}" class="space-y-3">
+            {% if mode == 'register' %}
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">名前</label>
+                <input type="text" name="name" placeholder="山田 太郎" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:bg-white transition">
+            </div>
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">学部</label>
+                <select name="faculty" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:bg-white transition text-slate-700">
+                    <option>情報データ科学部</option><option>多文化社会学部</option><option>教育学部</option><option>経済学部</option><option>医学部</option><option>歯学部</option><option>薬学部</option><option>工学部</option><option>環境科学部</option><option>水産学部</option>
+                </select>
+            </div>
+            {% endif %}
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">大学メールアドレス（ログインID）</label>
+                <input type="email" name="userid" value="{{ id_value }}" placeholder="taro@nagasaki-u.ac.jp" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:bg-white transition" required>
+            </div>
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">パスワード</label>
+                <input type="password" name="password" placeholder="8文字以上" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:bg-white transition" required>
+            </div>
+            <button type="submit" class="w-full bg-slate-900 text-white font-bold text-sm py-3 rounded-xl shadow-lg mt-2 active:scale-95 transition">
+                {% if mode == 'register' %}登録する{% else %}ログインして開始{% endif %}
             </button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ '/circle_signup' if mode == 'register' else '/circle_login' }}" class="space-y-3">
+            {% if mode == 'register' %}
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">サークル名</label>
+                <input type="text" name="circle_name" placeholder="〇〇サークル" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-leader-500 focus:bg-white transition">
+            </div>
+            {% endif %}
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">サークルID</label>
+                <input type="text" name="userid" value="{{ id_value }}" placeholder="circle_xxx" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-leader-500 focus:bg-white transition" required>
+            </div>
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">パスワード</label>
+                <input type="password" name="password" placeholder="8文字以上" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-leader-500 focus:bg-white transition" required>
+            </div>
+            <button type="submit" class="w-full bg-slate-900 text-white font-bold text-sm py-3 rounded-xl shadow-lg mt-2 active:scale-95 transition">
+                {% if mode == 'register' %}幹部として登録{% else %}幹部としてログイン{% endif %}
+            </button>
+        </form>
+        {% endif %}
 
-            <button
-                type="button"
-                id="auth-tab-leader"
-                onclick="setAuthRole('leader')"
-                class="w-1/2 py-2.5 rounded-lg text-slate-500 hover:text-slate-700 transition">
-                サークル幹部
-            </button>
+        <div class="mt-6 text-center">
+            {% if mode == 'login' %}
+            <p class="text-[11px] text-slate-500 mb-1">アカウントをお持ちでないですか？</p>
+            <a href="{{ '/circle_signup' if role == 'leader' else '/signup' }}" class="text-xs font-bold {{ 'text-leader-600' if role == 'leader' else 'text-brand-600' }}">新規登録はこちら</a>
+            {% else %}
+            <p class="text-[11px] text-slate-500 mb-1">すでにアカウントをお持ちですか？</p>
+            <a href="{{ '/circle_login' if role == 'leader' else '/login' }}" class="text-xs font-bold {{ 'text-leader-600' if role == 'leader' else 'text-brand-600' }}">ログインはこちら</a>
+            {% endif %}
         </div>
-
-        <!-- 学生用フォーム: ログイン時は /login、新規登録時は /signup へPOSTする
-             （action の切り替えは auth.js の toggleAuthMode が行う） -->
-        <form id="form-student" method="POST" action="/login" class="mt-5 space-y-4">
-            <div id="student-reg-fields" class="hidden space-y-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1">お名前</label>
-                    <input type="text" name="name" placeholder="キャンパス 太郎"
-                           class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1">所属学部</label>
-                    <select name="faculty" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
-                        <option>情報データ科学部</option>
-                        <option>多文化社会学部</option>
-                        <option>教育学部</option>
-                        <option>経済学部</option>
-                        <option>医学部</option>
-                        <option>歯学部</option>
-                        <option>薬学部</option>
-                        <option>工学部</option>
-                        <option>環境科学部</option>
-                        <option>水産学部</option>
-                    </select>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">メールアドレス（ユーザID）</label>
-                <input type="email" name="userid" placeholder="student@example.com" required
-                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
-            </div>
-
-            <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">パスワード</label>
-                <input type="password" name="password" placeholder="••••••••" required
-                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
-            </div>
-
-            <button type="submit"
-                    class="w-full mt-2 bg-brand-600 text-white font-bold py-3.5 rounded-xl text-sm">
-                <span id="btn-text-student">ログインして開始</span>
-                <i class="fa-solid fa-arrow-right"></i>
-            </button>
-        </form>
-
-        <!-- 幹部用フォーム: ログイン時は /circle_login、新規登録時は /circle_signup へPOSTする -->
-        <form id="form-leader" method="POST" action="/circle_login" class="mt-5 space-y-4 hidden">
-            <div id="leader-reg-fields" class="hidden space-y-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1">サークル・部活名</label>
-                    <input type="text" name="circle_name" placeholder="軽音サークル"
-                           class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">サークルID</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-3.5 text-slate-400 text-sm">@</span>
-                    <input type="text" name="circle_id" placeholder="circle_id" required
-                           class="w-full pl-7 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">幹部パスワード</label>
-                <input type="password" name="password" placeholder="••••••••" required
-                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
-            </div>
-
-            <button type="submit"
-                    class="w-full mt-2 bg-leader-600 text-white font-bold py-3.5 rounded-xl text-sm">
-                <span id="btn-text-leader">幹部としてログイン</span>
-                <i class="fa-solid fa-arrow-right"></i>
-            </button>
-        </form>
     </div>
-
-    <!-- ログイン・新規登録の切り替え -->
-    <div class="pt-6 text-center">
-        <p class="text-xs text-slate-500" id="auth-switch-text">
-            アカウントをお持ちでないですか？
-        </p>
-
-        <button type="button" onclick="toggleAuthMode()"
-                class="mt-1 text-sm font-bold text-slate-700 hover:text-brand-600"
-                id="auth-switch-btn">
-            新規登録はこちら
-        </button>
-    </div>
-
 </div>
+{% endblock %}

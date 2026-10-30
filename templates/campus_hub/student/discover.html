@@ -1,12 +1,14 @@
-<!-- 3-2: 発見 -->
-<div id="screen-student-discover" class="screen-content h-full flex flex-col bg-slate-50 hidden fade-in">
+{% extends "campus_hub/layout.html" %}
+{% block page %}
+<!-- 発見（モック） -->
+<div class="flex-1 flex flex-col bg-slate-50 fade-in">
     <div class="bg-white p-3 border-b border-slate-200 sticky top-0 z-20"><h3 class="text-sm font-bold text-center">発見</h3></div>
-    <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-5 pb-24">
+    <div class="flex-1 p-4 space-y-5 pb-24">
         <div class="bg-brand-50 border border-brand-100 p-3 rounded-2xl">
             <label class="text-xs font-bold text-brand-800 mb-2 block"><i class="fa-solid fa-graduation-cap mr-1"></i>あなたの学部の人気ランキング</label>
             <select class="w-full bg-white text-xs font-bold p-2.5 rounded-xl border border-brand-200 outline-none text-slate-700"><option>経済学部</option><option>工学部</option></select>
         </div>
-        
+
         <div>
             <h4 class="text-xs font-black mb-3 flex items-center"><i class="fa-solid fa-fire text-orange-500 mr-1.5"></i>急上昇中のサークル</h4>
             <div class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
@@ -20,3 +22,4 @@
         </div>
     </div>
 </div>
+{% endblock %}
