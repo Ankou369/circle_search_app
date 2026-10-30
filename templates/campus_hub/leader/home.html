@@ -6,7 +6,7 @@
     <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-24">
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
             <div class="w-12 h-12 rounded-xl bg-leader-100 text-leader-600 flex items-center justify-center text-xl"><i class="fa-solid fa-shield"></i></div>
-            <div><h3 class="text-sm font-bold">軽音サークル ACE</h3><p class="text-[10px] text-slate-500 font-mono mt-0.5">ID: @music_ace</p></div>
+            <div><h3 class="text-sm font-bold">{{ leader_circle_name or current_user.id }}</h3><p class="text-[10px] text-slate-500 font-mono mt-0.5">ID: @{{ current_user.id }}</p></div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -23,15 +23,30 @@
         <div>
             <h4 class="text-xs font-bold text-slate-500 mb-2 px-1">クイックアクション</h4>
             <div class="space-y-2">
-                <button class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
+                <button onclick="document.getElementById('post-form').scrollIntoView({behavior:'smooth'})" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
                     <div class="flex items-center gap-3"><i class="fa-solid fa-pen text-leader-500"></i><span class="text-xs font-bold">タイムラインに投稿する</span></div>
                     <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
                 </button>
-                <button class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
+                <a href="/regist_circle_info/{{ current_user.id }}" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
                     <div class="flex items-center gap-3"><i class="fa-solid fa-users text-leader-500"></i><span class="text-xs font-bold">サークル情報・メンバー編集</span></div>
                     <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
-                </button>
+                </a>
+                <a href="/circle/{{ current_user.id }}" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-eye text-leader-500"></i><span class="text-xs font-bold">自分のサークルページを見る</span></div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
             </div>
         </div>
+
+        <!-- 投稿フォーム（掲示板アプリの投稿機能を移植） -->
+        <form id="post-form" method="POST" action="/post" enctype="multipart/form-data" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h4 class="text-xs font-bold text-slate-500">タイムラインに投稿する</h4>
+            <input type="text" name="title" placeholder="タイトル"
+                   class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            <textarea name="comment" placeholder="コメント" rows="3"
+                      class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm"></textarea>
+            <input type="file" name="image" class="w-full text-xs text-slate-500">
+            <button type="submit" class="w-full bg-leader-600 text-white font-bold py-3 rounded-xl text-sm">投稿する</button>
+        </form>
     </div>
 </div>

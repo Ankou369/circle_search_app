@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen w-full bg-slate-50 text-slate-800">
+    <div class="max-w-md mx-auto p-4 space-y-4">
+        <div class="flex items-center gap-3 pt-2">
+            <a href="/circle/{{ circle.circle_id }}" class="text-slate-400 text-sm"><i class="fa-solid fa-chevron-left"></i></a>
+            <span class="font-bold text-sm">サークル情報の登録</span>
+        </div>
+
+        <form method="POST" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">サークル・部活名</label>
+                <input type="text" name="circle_name" value="{{ circle_info.name if circle_info else '' }}"
+                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">活動時間</label>
+                <input type="text" name="activity_time" value="{{ circle_info.time if circle_info else '' }}" placeholder="例: 毎週火・金 18:00〜20:00"
+                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">活動場所</label>
+                <input type="text" name="activity_place" value="{{ circle_info.place if circle_info else '' }}" placeholder="例: 文教キャンパス 音楽練習室"
+                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">活動内容</label>
+                <textarea name="activity_details" rows="4" placeholder="活動内容や雰囲気を書いてください"
+                          class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">{{ circle_info.activity_details if circle_info else '' }}</textarea>
+            </div>
+            <button type="submit" class="w-full bg-leader-600 text-white font-bold py-3 rounded-xl text-sm">登録する</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

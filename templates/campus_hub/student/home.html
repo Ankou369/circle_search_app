@@ -1,4 +1,4 @@
-<!-- 学生向けホーム -->
+<!-- 学生向けホーム（投稿はDBから表示：掲示板アプリのフィードを移植） -->
 <div id="screen-student-home" class="screen-content h-full flex flex-col bg-slate-100 hidden fade-in">
 
     <!-- 3-1: ホーム (フィード) -->
@@ -7,38 +7,50 @@
         <i class="fa-regular fa-bell text-slate-600"></i>
     </div>
     <div class="flex-1 overflow-y-auto no-scrollbar pb-24">
-        <!-- Post -->
+        {% for post in posts %}
         <div class="bg-white mb-2 py-3 px-4 border-b border-slate-200">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden"><img src="https://images.unsplash.com/photo-1517649763962-0c623266200b?w=150" class="w-full h-full object-cover"></div>
-                    <div><h4 class="text-xs font-bold text-slate-800">体育会サッカー部</h4><p class="text-[9px] text-slate-400">10分前</p></div>
+                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-xs font-black">{{ (post.display_name or post.userid)[:1] }}</div>
+                    <div>
+                        <a href="/circle/{{ post.userid }}" class="text-xs font-bold text-slate-800">{{ post.display_name or post.userid }}</a>
+                        <p class="text-[9px] text-slate-400">@{{ post.userid }}</p>
+                    </div>
                 </div>
+                {% if post.userid != current_user.id %}
+                <form method="POST" action="/follow">
+                    <input type="hidden" name="follow_userid" value="{{ post.userid }}">
+                    {% if post.userid in follow_list %}
+                    <button type="submit" class="text-[10px] font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500">フォロー解除</button>
+                    {% else %}
+                    <button type="submit" class="text-[10px] font-bold px-3 py-1.5 rounded-full bg-brand-600 text-white">フォロー</button>
+                    {% endif %}
+                </form>
+                {% endif %}
             </div>
-            <p class="text-xs text-slate-700 mb-2 leading-relaxed">秋季リーグ戦に向けた紅白戦を行いました！新入部員も大活躍中です⚽️ 見学はいつでもグラウンドでお待ちしています！</p>
+            {% if post.title %}<h5 class="text-xs font-black text-slate-800 mb-1">{{ post.title }}</h5>{% endif %}
+            <p class="text-xs text-slate-700 mb-2 leading-relaxed">{{ post.comment }}</p>
+            {% if post.image %}
             <div class="w-full h-48 bg-slate-100 rounded-xl mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1517649763962-0c623266200b?w=600" class="w-full h-full object-cover">
+                <img src="/uploads/{{ post.image }}" class="w-full h-full object-cover">
             </div>
-            <!-- いいね（グッドボタン）のみ -->
+            {% endif %}
             <div class="flex items-center gap-4 text-slate-500">
-                <button onclick="toggleGood(this)" class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-thumbs-up text-lg"></i><span class="text-xs font-medium count">14</span></button>
-                <button class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-comment text-lg"></i><span class="text-xs font-medium">2</span></button>
+                <button onclick="toggleGood(this)" class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-thumbs-up text-lg"></i><span class="text-xs font-medium count">0</span></button>
+                {% if post.userid == current_user.id %}
+                <form method="POST" action="/reset" onsubmit="return confirm('本当に削除しますか？')">
+                    <input type="hidden" name="id" value="{{ post.id }}">
+                    <button type="submit" class="text-[10px] font-bold text-red-400">削除</button>
+                </form>
+                {% endif %}
             </div>
         </div>
-        
-        <!-- Post 2 -->
-        <div class="bg-white mb-2 py-3 px-4 border-b border-slate-200">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden"><img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" class="w-full h-full object-cover"></div>
-                    <div><h4 class="text-xs font-bold text-slate-800">軽音サークル ACE</h4><p class="text-[9px] text-slate-400">2時間前</p></div>
-                </div>
-            </div>
-            <p class="text-xs text-slate-700 mb-2 leading-relaxed">次回のライブのセトリ決まりました🎸</p>
-            <div class="flex items-center gap-4 text-slate-500">
-                <button onclick="toggleGood(this)" class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-thumbs-up text-lg"></i><span class="text-xs font-medium count">32</span></button>
-            </div>
+        {% else %}
+        <div class="p-8 text-center">
+            <p class="text-xs text-slate-400 font-bold">まだ投稿がありません</p>
+            <p class="text-[10px] text-slate-400 mt-1">サークルが投稿するとここに表示されます</p>
         </div>
+        {% endfor %}
     </div>
 
 </div>

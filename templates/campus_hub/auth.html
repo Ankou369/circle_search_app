@@ -1,4 +1,4 @@
-<!-- ログイン・新規登録画面 -->
+<!-- ログイン・新規登録画面（掲示板アプリの認証を移植し、実フォームにした） -->
 <div id="screen-auth"
      class="screen-content min-h-screen flex flex-col justify-start p-5 overflow-y-auto bg-white">
 
@@ -17,9 +17,17 @@
             </p>
         </div>
 
+        {% if error_message %}
+        <p class="mt-4 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl p-3">{{ error_message }}</p>
+        {% endif %}
+        {% for message in get_flashed_messages() %}
+        <p class="mt-4 text-xs font-bold text-brand-600 bg-brand-50 border border-brand-100 rounded-xl p-3">{{ message }}</p>
+        {% endfor %}
+
         <!-- 学生・幹部の切り替え -->
         <div class="mt-6 bg-slate-100 p-1 rounded-xl flex text-xs font-bold">
             <button
+                type="button"
                 id="auth-tab-student"
                 onclick="setAuthRole('student')"
                 class="w-1/2 py-2.5 rounded-lg bg-white text-brand-600 shadow-sm transition">
@@ -27,6 +35,7 @@
             </button>
 
             <button
+                type="button"
                 id="auth-tab-leader"
                 onclick="setAuthRole('leader')"
                 class="w-1/2 py-2.5 rounded-lg text-slate-500 hover:text-slate-700 transition">
@@ -34,49 +43,58 @@
             </button>
         </div>
 
-        <!-- 学生用フォーム -->
-        <div id="form-student" class="mt-5 space-y-4">
+        <!-- 学生用フォーム: ログイン時は /login、新規登録時は /signup へPOSTする
+             （action の切り替えは auth.js の toggleAuthMode が行う） -->
+        <form id="form-student" method="POST" action="/login" class="mt-5 space-y-4">
             <div id="student-reg-fields" class="hidden space-y-4">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 mb-1">お名前</label>
-                    <input type="text" placeholder="キャンパス 太郎"
+                    <input type="text" name="name" placeholder="キャンパス 太郎"
                            class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
                 </div>
 
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 mb-1">所属学部</label>
-                    <select class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                    <select name="faculty" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                        <option>情報データ科学部</option>
+                        <option>多文化社会学部</option>
+                        <option>教育学部</option>
                         <option>経済学部</option>
+                        <option>医学部</option>
+                        <option>歯学部</option>
+                        <option>薬学部</option>
                         <option>工学部</option>
+                        <option>環境科学部</option>
+                        <option>水産学部</option>
                     </select>
                 </div>
             </div>
 
             <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">メールアドレス</label>
-                <input type="email" placeholder="student@example.com"
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">メールアドレス（ユーザID）</label>
+                <input type="email" name="userid" placeholder="student@example.com" required
                        class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
             </div>
 
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 mb-1">パスワード</label>
-                <input type="password" placeholder="••••••••"
+                <input type="password" name="password" placeholder="••••••••" required
                        class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
             </div>
 
-            <button onclick="handleAuthSubmit('student')"
+            <button type="submit"
                     class="w-full mt-2 bg-brand-600 text-white font-bold py-3.5 rounded-xl text-sm">
                 <span id="btn-text-student">ログインして開始</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
-        </div>
+        </form>
 
-        <!-- 幹部用フォーム -->
-        <div id="form-leader" class="mt-5 space-y-4 hidden">
+        <!-- 幹部用フォーム: ログイン時は /circle_login、新規登録時は /circle_signup へPOSTする -->
+        <form id="form-leader" method="POST" action="/circle_login" class="mt-5 space-y-4 hidden">
             <div id="leader-reg-fields" class="hidden space-y-4">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 mb-1">サークル・部活名</label>
-                    <input type="text" placeholder="軽音サークル"
+                    <input type="text" name="circle_name" placeholder="軽音サークル"
                            class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
                 </div>
             </div>
@@ -85,23 +103,23 @@
                 <label class="block text-[10px] font-bold text-slate-500 mb-1">サークルID</label>
                 <div class="relative">
                     <span class="absolute left-3 top-3.5 text-slate-400 text-sm">@</span>
-                    <input type="text" placeholder="circle_id"
+                    <input type="text" name="circle_id" placeholder="circle_id" required
                            class="w-full pl-7 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono">
                 </div>
             </div>
 
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 mb-1">幹部パスワード</label>
-                <input type="password" placeholder="••••••••"
+                <input type="password" name="password" placeholder="••••••••" required
                        class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
             </div>
 
-            <button onclick="handleAuthSubmit('leader')"
+            <button type="submit"
                     class="w-full mt-2 bg-leader-600 text-white font-bold py-3.5 rounded-xl text-sm">
                 <span id="btn-text-leader">幹部としてログイン</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
-        </div>
+        </form>
     </div>
 
     <!-- ログイン・新規登録の切り替え -->
@@ -110,7 +128,7 @@
             アカウントをお持ちでないですか？
         </p>
 
-        <button onclick="toggleAuthMode()"
+        <button type="button" onclick="toggleAuthMode()"
                 class="mt-1 text-sm font-bold text-slate-700 hover:text-brand-600"
                 id="auth-switch-btn">
             新規登録はこちら

@@ -28,6 +28,10 @@ function toggleAuthMode() {
     document.getElementById('student-reg-fields').classList.toggle('hidden', !isReg);
     document.getElementById('leader-reg-fields').classList.toggle('hidden', !isReg);
 
-    document.getElementById('btn-text-student').innerText = isReg ? "登録して診断へ進む" : "ログインして開始";
+    document.getElementById('btn-text-student').innerText = isReg ? "登録する" : "ログインして開始";
     document.getElementById('btn-text-leader').innerText = isReg ? "幹部として登録" : "幹部としてログイン";
+
+    // フォームの送信先もモードに合わせて切り替える（ログイン / 新規登録）
+    document.getElementById('form-student').action = isReg ? '/signup' : '/login';
+    document.getElementById('form-leader').action = isReg ? '/circle_signup' : '/circle_login';
 }

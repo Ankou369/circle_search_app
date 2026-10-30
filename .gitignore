@@ -13,6 +13,8 @@ instance/
 .env
 *.db
 *.sqlite3
+uploads/*
+!uploads/.gitkeep
 
 # Editors / OS
 .vscode/

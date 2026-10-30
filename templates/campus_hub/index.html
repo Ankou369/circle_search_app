@@ -2,6 +2,15 @@
 
 {% block content %}
 
+<script>
+    // サーバーが決めた初期画面・認証タブの状態を main.js へ渡す
+    window.CAMPUS = {
+        initialScreen: "{{ initial_screen|default('auth') }}",
+        authRole: "{{ auth_role|default('student') }}",
+        authMode: "{{ auth_mode|default('login') }}"
+    };
+</script>
+
 <div class="min-h-screen w-full bg-slate-50 text-slate-800 flex flex-col relative">
 
     <!-- ログイン・新規登録 -->

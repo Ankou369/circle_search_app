@@ -2,30 +2,9 @@
 let currentAuthMode = 'login'; // 'login' or 'register'
 let currentRole = 'student'; // 'student' or 'leader'
 
-function handleAuthSubmit(role) {
-    if (role === 'student') {
-        if (currentAuthMode === 'register') {
-            // 学生の新規登録時は診断画面へ
-            switchScreen('diagnostic');
-        } else {
-            // 学生のログイン時はホームへ
-            switchScreen('student-home');
-        }
-    } else {
-        // 幹部の場合は登録もログインも管理ダッシュボードへ
-        switchScreen('leader-home');
-    }
-}
-
 function logout() {
-    // 全てのナビを隠す
-    document.getElementById('nav-student').classList.add('hidden');
-    document.getElementById('nav-leader').classList.add('hidden');
-    // 初期状態に戻す
-    currentAuthMode = 'login';
-    toggleAuthMode(); // リセット用 (1回トグルして戻す)
-    toggleAuthMode();
-    switchScreen('auth');
+    // サーバー側のログアウト（Flask-Login）を実行する
+    window.location.href = '/logout';
 }
 
 function updateNavHighlight(role, activeTarget) {
@@ -56,7 +35,14 @@ function finishDiagnostic() {
     switchScreen('student-home');
 }
 
-// 初期ロード時
+// 初期ロード時: サーバーから渡された状態（window.CAMPUS）を復元してから初期画面を開く
 window.onload = () => {
-    switchScreen('auth');
+    const state = window.CAMPUS || {};
+    if (state.authRole === 'leader') {
+        setAuthRole('leader');
+    }
+    if (state.authMode === 'register') {
+        toggleAuthMode();
+    }
+    switchScreen(state.initialScreen || 'auth');
 }
