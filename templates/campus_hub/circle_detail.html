@@ -14,13 +14,13 @@
             <p class="text-[10px] text-slate-500 font-mono mt-0.5">@{{ circle.circle_id }}</p>
 
             <div class="flex justify-center gap-8 mt-4">
-                <div><span class="block text-lg font-black">{{ follower_count }}</span><span class="text-[10px] font-bold text-slate-500">フォロワー</span></div>
-                <div><span class="block text-lg font-black">{{ following_count }}</span><span class="text-[10px] font-bold text-slate-500">フォロー中</span></div>
+                <div><span class="block text-lg font-black">{{ follower }}</span><span class="text-[10px] font-bold text-slate-500">フォロワー</span></div>
+                <div><span class="block text-lg font-black">{{ following }}</span><span class="text-[10px] font-bold text-slate-500">フォロー中</span></div>
             </div>
 
             {% if current_user.id != circle.circle_id %}
             <form method="POST" action="/follow" class="mt-4">
-                <input type="hidden" name="follow_userid" value="{{ circle.circle_id }}">
+                <input type="hidden" name="follow_id" value="{{ circle.circle_id }}">
                 {% if is_following %}
                 <button type="submit" class="px-5 py-2 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">フォロー解除</button>
                 {% else %}
@@ -34,16 +34,27 @@
 
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
             <h2 class="text-xs font-bold text-slate-500 mb-2">サークル情報</h2>
-            {% if circle_info and (circle_info.time or circle_info.place or circle_info.activity_details) %}
+            {% if circle_info and (circle_info.circle_time or circle_info.circle_place or circle_info.activity_details) %}
             <dl class="text-xs space-y-1.5">
-                {% if circle_info.time %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動時間</dt><dd>{{ circle_info.time }}</dd></div>{% endif %}
-                {% if circle_info.place %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動場所</dt><dd>{{ circle_info.place }}</dd></div>{% endif %}
+                {% if circle_info.circle_time %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動時間</dt><dd>{{ circle_info.circle_time }}</dd></div>{% endif %}
+                {% if circle_info.circle_place %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動場所</dt><dd>{{ circle_info.circle_place }}</dd></div>{% endif %}
                 {% if circle_info.activity_details %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動内容</dt><dd>{{ circle_info.activity_details }}</dd></div>{% endif %}
             </dl>
             {% else %}
             <p class="text-xs text-slate-400">まだ情報が登録されていません</p>
             {% endif %}
         </div>
+
+        {% if faculty_stats %}
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 class="text-xs font-bold text-slate-500 mb-2">学部別部員数（合計 {{ faculty_total }}人）</h2>
+            <dl class="text-xs space-y-1.5">
+                {% for label, count in faculty_stats %}
+                {% if count %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-28">{{ label }}</dt><dd>{{ count }}人</dd></div>{% endif %}
+                {% endfor %}
+            </dl>
+        </div>
+        {% endif %}
 
         <div>
             <h2 class="text-xs font-bold text-slate-500 mb-2 px-1">過去の投稿</h2>
@@ -52,10 +63,10 @@
                 <div class="bg-white p-3 px-4 rounded-2xl border border-slate-200">
                     {% if post.title %}<h3 class="text-xs font-black text-slate-800 mb-1">{{ post.title }}</h3>{% endif %}
                     <p class="text-xs text-slate-700 leading-relaxed">{{ post.comment }}</p>
-                    {% if post.image %}<img src="/uploads/{{ post.image }}" class="w-full h-48 object-cover rounded-xl mt-2">{% endif %}
+                    {% if post.image_path %}<img src="/uploads/{{ post.image_path }}" class="w-full h-48 object-cover rounded-xl mt-2">{% endif %}
                     {% if post.userid == current_user.id %}
                     <form method="POST" action="/reset" onsubmit="return confirm('本当に削除しますか？')" class="mt-2">
-                        <input type="hidden" name="id" value="{{ post.id }}">
+                        <input type="hidden" name="post_id" value="{{ post.id }}">
                         <button type="submit" class="text-[10px] font-bold text-red-400">削除</button>
                     </form>
                     {% endif %}

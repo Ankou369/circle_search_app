@@ -11,6 +11,20 @@ from werkzeug.utils import secure_filename
 # データベースのファイル名（初回起動時に自動作成される）
 DATABASE = "campus_hub.db"
 
+# 学部一覧（circle_number_of_students の列名と表示名の対応）
+FACULTIES = [
+    ("information_and_data_science", "情報データ科学部"),
+    ("multicultural_society", "多文化社会学部"),
+    ("education", "教育学部"),
+    ("economics", "経済学部"),
+    ("medicine", "医学部"),
+    ("dentistry", "歯学部"),
+    ("pharmacy", "薬学部"),
+    ("engineering", "工学部"),
+    ("environmental_science", "環境科学部"),
+    ("fisheries", "水産学部"),
+]
+
 app = Flask(__name__)
 # セッション署名用の秘密鍵（環境変数があればそれを使い、無ければ開発用）
 app.secret_key = os.environ.get("SECRET_KEY", "campus-hub-dev-secret")
@@ -377,11 +391,15 @@ def leader_home():
     if current_type() != "circle_user":
         return redirect("/")
     db = get_db()
+    follower_count = db.execute(
+        "SELECT COUNT(*) FROM follow_table WHERE follow_id = ?", (current_user.id,)
+    ).fetchone()[0]
     return render_template(
         "campus_hub/leader/home.html",
         nav="leader",
         active="leader-home",
         leader_circle_name=circle_display_name(db, current_user.id),
+        follower_count=follower_count,
     )
 
 
@@ -405,6 +423,31 @@ def leader_settings():
         "campus_hub/leader/settings.html",
         nav="leader",
         active="leader-settings",
+        leader_circle_name=circle_display_name(db, current_user.id),
+    )
+
+
+@app.route("/leader/followers")
+@login_required
+def leader_followers():
+    if current_type() != "circle_user":
+        return redirect("/")
+    db = get_db()
+    followers = db.execute(
+        """
+        SELECT user.userid AS userid, user.name AS name, user.faculty AS faculty
+          FROM follow_table
+          JOIN user ON user.userid = follow_table.user_id
+         WHERE follow_table.follow_id = ?
+         ORDER BY follow_table.id
+        """,
+        (current_user.id,),
+    ).fetchall()
+    return render_template(
+        "campus_hub/leader/followers.html",
+        nav="leader",
+        active="leader-home",
+        followers=followers,
         leader_circle_name=circle_display_name(db, current_user.id),
     )
 
@@ -510,8 +553,18 @@ def circle_account(circle_id):
         "SELECT 1 FROM follow_table WHERE user_id = ? AND follow_id = ?",
         (current_user.id, circle_id),
     ).fetchone()
+    students_row = db.execute(
+        "SELECT * FROM circle_number_of_students WHERE circle_id = ?", (circle_id,)
+    ).fetchone()
+    faculty_stats = []
+    if students_row:
+        faculty_stats = [
+            (label, students_row[col] or 0) for col, label in FACULTIES
+        ]
     return render_template(
         "campus_hub/circle_detail.html",
+        faculty_stats=faculty_stats,
+        faculty_total=sum(count for _label, count in faculty_stats),
         circle=circle,
         circle_name=circle_display_name(db, circle_id),
         posts=posts,
@@ -558,15 +611,45 @@ def regist_circle_info(circle_id):
                 """,
                 (circle_id, circle_name, circle_time, circle_place, activity_details),
             )
+        # 学部別部員数（circle_number_of_students）も一緒に保存する
+        counts = {}
+        for col, _label in FACULTIES:
+            try:
+                counts[col] = max(0, int(request.form.get(col) or 0))
+            except ValueError:
+                counts[col] = 0
+        cols = [col for col, _label in FACULTIES]
+        existing_students = db.execute(
+            "SELECT id FROM circle_number_of_students WHERE circle_id = ?",
+            (circle_id,),
+        ).fetchone()
+        if existing_students:
+            assignments = ", ".join(f"{col} = ?" for col in cols)
+            db.execute(
+                f"UPDATE circle_number_of_students SET {assignments} WHERE circle_id = ?",
+                tuple(counts[col] for col in cols) + (circle_id,),
+            )
+        else:
+            col_names = ", ".join(cols)
+            placeholders = ", ".join("?" for _ in cols)
+            db.execute(
+                f"INSERT INTO circle_number_of_students (circle_id, {col_names}) VALUES (?, {placeholders})",
+                (circle_id,) + tuple(counts[col] for col in cols),
+            )
         db.commit()
         return redirect(url_for("circle_account", circle_id=circle_id))
     circle_info = db.execute(
         "SELECT * FROM circle_info WHERE circle_id = ?", (circle_id,)
     ).fetchone()
+    students_row = db.execute(
+        "SELECT * FROM circle_number_of_students WHERE circle_id = ?", (circle_id,)
+    ).fetchone()
     return render_template(
         "campus_hub/regist_circle_info.html",
         circle_id=circle_id,
         circle_info=circle_info,
+        faculties=FACULTIES,
+        students_row=students_row,
     )
 
 

@@ -10,8 +10,9 @@
                 <p class="text-[10px] text-slate-500 font-bold">@{{ current_user.id }} ・ 管理者モード</p>
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-3 mt-4 text-center">
+        <div class="grid grid-cols-3 gap-3 mt-4 text-center">
             <div class="bg-slate-50 rounded-xl p-2 border border-slate-100"><p class="text-[10px] text-slate-500 font-bold">新規DM</p><p class="text-base font-black text-slate-800">12<span class="text-[10px] font-bold ml-0.5">件</span></p></div>
+            <a href="/leader/followers" class="bg-slate-50 rounded-xl p-2 border border-slate-100 block"><p class="text-[10px] text-slate-500 font-bold">フォロワー</p><p class="text-base font-black text-leader-600">{{ follower_count }}<span class="text-[10px] font-bold ml-0.5">人</span></p></a>
             <div class="bg-slate-50 rounded-xl p-2 border border-slate-100"><p class="text-[10px] text-slate-500 font-bold">総いいね数</p><p class="text-base font-black text-slate-800">145<span class="text-[10px] font-bold ml-0.5">件</span></p></div>
         </div>
     </div>
@@ -21,6 +22,10 @@
             <div class="space-y-2">
                 <a href="#post-form" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
                     <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-leader-50 text-leader-600 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></div><span class="text-xs font-bold">新歓情報を投稿する</span></div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
+                <a href="/leader/followers" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
+                    <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-leader-50 text-leader-600 flex items-center justify-center"><i class="fa-solid fa-users text-xs"></i></div><span class="text-xs font-bold">フォロワー一覧を見る</span></div>
                     <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
                 </a>
                 <a href="/regist_circle_info/{{ current_user.id }}" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
