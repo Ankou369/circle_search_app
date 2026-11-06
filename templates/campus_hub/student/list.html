@@ -11,7 +11,7 @@
     <div class="flex-1 p-3 space-y-2 pb-24">
         {% if circles %}
             {% for circle in circles %}
-            <a href="/circle/{{ circle.circle_id }}" class="circle-card bg-white p-3 rounded-xl border border-slate-200 flex gap-3 items-center shadow-sm" data-name="{{ (circle.circle_name or circle.circle_id)|lower }}">
+            <a href="/circle/{{ circle.circle_id }}" class="circle-card bg-white p-3 rounded-xl border border-slate-200 flex gap-3 items-center shadow-sm" data-name="{{ ((circle.circle_name or circle.circle_id) ~ ' ' ~ (circle.activity_details or ''))|lower }}">
                 <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
                 <div class="flex-1 min-w-0">
                     <h5 class="text-xs font-bold truncate">{{ circle.circle_name or circle.circle_id }}</h5>

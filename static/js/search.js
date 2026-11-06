@@ -1,6 +1,6 @@
 // --- サークル一覧の検索（入力に合わせてその場で絞り込む） ---
 document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('circle-search');
+    const input = document.getElementById('circle-search-input');
     if (!input) return;
 
     input.addEventListener('input', () => {
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (show) visible++;
         });
 
-        const noResult = document.getElementById('circle-no-result');
+        const noResult = document.getElementById('circle-search-empty');
         if (noResult) {
             noResult.classList.toggle('hidden', visible !== 0);
         }

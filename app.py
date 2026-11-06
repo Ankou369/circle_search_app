@@ -187,7 +187,9 @@ def get_circles(db):
     return db.execute("""
         SELECT circle_account.circle_id AS circle_id,
                (SELECT circle_name FROM circle_info
-                 WHERE circle_info.circle_id = circle_account.circle_id) AS circle_name
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS circle_name,
+               (SELECT activity_details FROM circle_info
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS activity_details
           FROM circle_account ORDER BY circle_account.id
     """).fetchall()
 
