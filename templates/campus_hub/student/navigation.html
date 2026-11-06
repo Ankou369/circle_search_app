@@ -1,20 +1,13 @@
 <!-- 学生用 下部ナビゲーション（リンクで画面遷移し、選択中タブはサーバー側の active で決める） -->
 <div class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
     <div class="flex justify-between items-center px-4 py-2">
-        <a href="/" class="w-1/5 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'home' else 'text-slate-400 hover:text-slate-700' }}">
+        <a href="/" class="w-1/3 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'home' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-solid fa-house text-xl"></i><span class="text-[9px] font-bold">ホーム</span>
         </a>
-        <a href="/discover" class="w-1/5 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'discover' else 'text-slate-400 hover:text-slate-700' }}">
-            <i class="fa-regular fa-compass text-xl"></i><span class="text-[9px] font-bold">発見</span>
-        </a>
-        <a href="/list" class="w-1/5 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'list' else 'text-slate-400 hover:text-slate-700' }}">
+        <a href="/list" class="w-1/3 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'list' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-solid fa-list text-xl"></i><span class="text-[9px] font-bold">一覧</span>
         </a>
-        <a href="/dm" class="w-1/5 flex flex-col items-center gap-1 relative {{ 'text-brand-600' if active == 'dm' else 'text-slate-400 hover:text-slate-700' }}">
-            <i class="fa-regular fa-comment-dots text-xl"></i><span class="text-[9px] font-bold">DM</span>
-            {% if active != 'dm' %}<span class="absolute top-0 right-1/2 translate-x-4 w-2 h-2 bg-red-500 rounded-full border border-white"></span>{% endif %}
-        </a>
-        <a href="/profile" class="w-1/5 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'profile' else 'text-slate-400 hover:text-slate-700' }}">
+        <a href="/profile" class="w-1/3 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'profile' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-regular fa-user text-xl"></i><span class="text-[9px] font-bold">マイページ</span>
         </a>
     </div>

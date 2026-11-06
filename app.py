@@ -324,16 +324,6 @@ def campus_hub():
     return redirect("/")
 
 
-@app.route("/discover")
-@login_required
-def discover():
-    if current_type() == "circle_user":
-        return redirect("/leader")
-    return render_template(
-        "campus_hub/student/discover.html", nav="student", active="discover"
-    )
-
-
 @app.route("/list")
 @login_required
 def circle_list_page():
@@ -345,16 +335,6 @@ def circle_list_page():
         nav="student",
         active="list",
         circles=get_circles(db),
-    )
-
-
-@app.route("/dm")
-@login_required
-def student_dm():
-    if current_type() == "circle_user":
-        return redirect("/leader")
-    return render_template(
-        "campus_hub/student/dm.html", nav="student", active="dm"
     )
 
 

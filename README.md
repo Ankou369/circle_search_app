@@ -19,14 +19,10 @@ flowchart TD
     end
     subgraph student ["学生"]
         HOME["/ フィード"]
-        DIS["/discover 発見"]
         LIST["/list サークル一覧"]
-        SDM["/dm DM"]
         PROF["/profile マイページ"]
         DIAG["/diagnostic 相性診断"]
-        HOME <--> DIS
         HOME <--> LIST
-        HOME <--> SDM
         HOME <--> PROF
         PROF --> DIAG
         DIAG --> HOME
