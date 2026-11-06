@@ -34,8 +34,9 @@
 
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
             <h2 class="text-xs font-bold text-slate-500 mb-2">サークル情報</h2>
-            {% if circle_info and (circle_info.circle_time or circle_info.circle_place or circle_info.activity_details) %}
+            {% if circle_info and (circle_info.circle_time or circle_info.circle_place or circle_info.activity_details or schedule_text) %}
             <dl class="text-xs space-y-1.5">
+                {% if schedule_text %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動日</dt><dd>{{ schedule_text }}</dd></div>{% endif %}
                 {% if circle_info.circle_time %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動時間</dt><dd>{{ circle_info.circle_time }}</dd></div>{% endif %}
                 {% if circle_info.circle_place %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動場所</dt><dd>{{ circle_info.circle_place }}</dd></div>{% endif %}
                 {% if circle_info.activity_details %}<div class="flex gap-2"><dt class="font-bold text-slate-500 w-16">活動内容</dt><dd>{{ circle_info.activity_details }}</dd></div>{% endif %}

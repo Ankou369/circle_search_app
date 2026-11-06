@@ -20,9 +20,11 @@ flowchart TD
     subgraph student ["学生"]
         HOME["/ フィード"]
         LIST["/list サークル一覧"]
+        CAL["/calendar マイカレンダー"]
         PROF["/profile マイページ"]
         DIAG["/diagnostic 相性診断"]
         HOME <--> LIST
+        HOME <--> CAL
         HOME <--> PROF
         PROF --> DIAG
         DIAG --> HOME

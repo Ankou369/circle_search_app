@@ -1,5 +1,7 @@
 import os
 import sqlite3
+from calendar import monthcalendar
+from datetime import date
 
 from flask import (Flask, flash, g, redirect, render_template, request,
                    send_from_directory, url_for)
@@ -24,6 +26,9 @@ FACULTIES = [
     ("environmental_science", "環境科学部"),
     ("fisheries", "水産学部"),
 ]
+
+# 活動曜日（Python の date.weekday() と同じ番号: 月=0 〜 日=6）
+WEEKDAYS = [(0, "月"), (1, "火"), (2, "水"), (3, "木"), (4, "金"), (5, "土"), (6, "日")]
 
 app = Flask(__name__)
 # セッション署名用の秘密鍵（環境変数があればそれを使い、無ければ開発用）
@@ -102,9 +107,17 @@ def init_db():
             circle_name TEXT,
             circle_time TEXT,
             circle_place TEXT,
-            activity_details TEXT
+            activity_details TEXT,
+            activity_weekdays TEXT,
+            activity_start TEXT,
+            activity_end TEXT
         )
     """)
+    # 既存のDB（列追加前に作られたもの）に不足列を足す
+    existing_cols = [row[1] for row in db.execute("PRAGMA table_info(circle_info)")]
+    for col in ("activity_weekdays", "activity_start", "activity_end"):
+        if col not in existing_cols:
+            db.execute(f"ALTER TABLE circle_info ADD COLUMN {col} TEXT")
     # サークルの学部別人数
     db.execute("""
         CREATE TABLE IF NOT EXISTS circle_number_of_students (
@@ -165,6 +178,22 @@ def circle_display_name(db, circle_id):
     if row and row["circle_name"]:
         return row["circle_name"]
     return circle_id
+
+
+def schedule_text(info):
+    """circle_info の活動スケジュールを「毎週火・金 18:00〜20:00」の形にする。"""
+    if not info or not info["activity_weekdays"]:
+        return ""
+    labels = dict(WEEKDAYS)
+    days = "・".join(
+        labels[int(d)] for d in info["activity_weekdays"].split(",") if d.strip().isdigit()
+    )
+    text = f"毎週{days}"
+    if info["activity_start"] and info["activity_end"]:
+        text += f" {info['activity_start']}〜{info['activity_end']}"
+    elif info["activity_start"]:
+        text += f" {info['activity_start']}〜"
+    return text
 
 
 def get_posts(db):
@@ -357,6 +386,83 @@ def profile():
     )
 
 
+@app.route("/calendar")
+@login_required
+def my_calendar():
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    today = date.today()
+    ym = request.args.get("ym", "")
+    try:
+        year, month = (int(part) for part in ym.split("-"))
+        date(year, month, 1)
+    except (ValueError, AttributeError):
+        year, month = today.year, today.month
+    db = get_db()
+    followed = db.execute(
+        """
+        SELECT follow_table.follow_id AS circle_id,
+               circle_info.circle_name AS circle_name,
+               circle_info.activity_weekdays AS activity_weekdays,
+               circle_info.activity_start AS activity_start,
+               circle_info.activity_end AS activity_end,
+               circle_info.circle_place AS circle_place
+          FROM follow_table
+          LEFT JOIN circle_info ON circle_info.circle_id = follow_table.follow_id
+         WHERE follow_table.user_id = ?
+        """,
+        (current_user.id,),
+    ).fetchall()
+    schedules = []
+    for row in followed:
+        if not row["activity_weekdays"]:
+            continue
+        days = {int(d) for d in row["activity_weekdays"].split(",") if d.strip().isdigit()}
+        if days:
+            schedules.append((row, days))
+    weeks = []
+    month_events = []
+    for week in monthcalendar(year, month):
+        cells = []
+        for day_num in week:
+            if day_num == 0:
+                cells.append(None)
+                continue
+            current = date(year, month, day_num)
+            events = [
+                {
+                    "circle_id": row["circle_id"],
+                    "name": row["circle_name"] or row["circle_id"],
+                    "start": row["activity_start"],
+                    "end": row["activity_end"],
+                    "place": row["circle_place"],
+                }
+                for row, days in schedules
+                if current.weekday() in days
+            ]
+            cells.append(
+                {"day": day_num, "events": events, "is_today": current == today}
+            )
+            for event in events:
+                month_events.append({"date": current, **event})
+        weeks.append(cells)
+    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+    next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return render_template(
+        "campus_hub/student/calendar.html",
+        nav="student",
+        active="calendar",
+        year=year,
+        month=month,
+        weeks=weeks,
+        month_events=month_events,
+        weekday_labels=[label for _num, label in WEEKDAYS],
+        prev_ym=f"{prev_year}-{prev_month:02d}",
+        next_ym=f"{next_year}-{next_month:02d}",
+        has_follows=len(followed) > 0,
+    )
+
+
 @app.route("/diagnostic")
 @login_required
 def diagnostic():
@@ -535,6 +641,7 @@ def circle_account(circle_id):
         ]
     return render_template(
         "campus_hub/circle_detail.html",
+        schedule_text=schedule_text(circle_info),
         faculty_stats=faculty_stats,
         faculty_total=sum(count for _label, count in faculty_stats),
         circle=circle,
@@ -561,6 +668,11 @@ def regist_circle_info(circle_id):
         circle_time = request.form.get("circle_time")
         circle_place = request.form.get("circle_place")
         activity_details = request.form.get("activity_details")
+        # 活動スケジュール（曜日は "1,4" のようなカンマ区切りで保存する）
+        weekdays = sorted({int(d) for d in request.form.getlist("weekdays") if d.isdigit()})
+        activity_weekdays = ",".join(str(d) for d in weekdays)
+        activity_start = request.form.get("activity_start") or None
+        activity_end = request.form.get("activity_end") or None
         existing = db.execute(
             "SELECT id FROM circle_info WHERE circle_id = ?", (circle_id,)
         ).fetchone()
@@ -569,19 +681,23 @@ def regist_circle_info(circle_id):
                 """
                 UPDATE circle_info
                    SET circle_name = ?, circle_time = ?, circle_place = ?,
-                       activity_details = ?
+                       activity_details = ?, activity_weekdays = ?,
+                       activity_start = ?, activity_end = ?
                  WHERE circle_id = ?
                 """,
-                (circle_name, circle_time, circle_place, activity_details, circle_id),
+                (circle_name, circle_time, circle_place, activity_details,
+                 activity_weekdays, activity_start, activity_end, circle_id),
             )
         else:
             db.execute(
                 """
                 INSERT INTO circle_info
-                    (circle_id, circle_name, circle_time, circle_place, activity_details)
-                VALUES (?, ?, ?, ?, ?)
+                    (circle_id, circle_name, circle_time, circle_place, activity_details,
+                     activity_weekdays, activity_start, activity_end)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (circle_id, circle_name, circle_time, circle_place, activity_details),
+                (circle_id, circle_name, circle_time, circle_place, activity_details,
+                 activity_weekdays, activity_start, activity_end),
             )
         # 学部別部員数（circle_number_of_students）も一緒に保存する
         counts = {}
@@ -616,12 +732,19 @@ def regist_circle_info(circle_id):
     students_row = db.execute(
         "SELECT * FROM circle_number_of_students WHERE circle_id = ?", (circle_id,)
     ).fetchone()
+    selected_weekdays = []
+    if circle_info and circle_info["activity_weekdays"]:
+        selected_weekdays = [
+            int(d) for d in circle_info["activity_weekdays"].split(",") if d.strip().isdigit()
+        ]
     return render_template(
         "campus_hub/regist_circle_info.html",
         circle_id=circle_id,
         circle_info=circle_info,
         faculties=FACULTIES,
         students_row=students_row,
+        weekdays=WEEKDAYS,
+        selected_weekdays=selected_weekdays,
     )
 
 

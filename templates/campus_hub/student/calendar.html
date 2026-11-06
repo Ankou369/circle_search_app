@@ -1,0 +1,61 @@
+{% extends "campus_hub/layout.html" %}
+{% block page %}
+<!-- マイカレンダー (学生用): フォロー中サークルの活動日を自動表示 -->
+<div class="flex-1 flex flex-col bg-slate-50 fade-in">
+    <div class="bg-white p-3 border-b border-slate-200 sticky top-0 z-20 flex items-center justify-between">
+        <a href="/calendar?ym={{ prev_ym }}" class="text-slate-400 px-2"><i class="fa-solid fa-chevron-left"></i></a>
+        <h3 class="text-sm font-bold">{{ year }}年 {{ month }}月</h3>
+        <a href="/calendar?ym={{ next_ym }}" class="text-slate-400 px-2"><i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+    <div class="flex-1 p-3 pb-24 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
+            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
+                {% for label in weekday_labels %}<div>{{ label }}</div>{% endfor %}
+            </div>
+            {% for week in weeks %}
+            <div class="grid grid-cols-7">
+                {% for cell in week %}
+                <div class="min-h-14 p-1 border-t border-slate-100">
+                    {% if cell %}
+                    <div class="text-[10px] font-bold {{ 'text-white bg-brand-600 rounded-full w-4 h-4 flex items-center justify-center' if cell.is_today else 'text-slate-600' }}">{{ cell.day }}</div>
+                    {% for event in cell.events %}
+                    <a href="/circle/{{ event.circle_id }}" class="block mt-0.5 text-[8px] font-bold bg-brand-50 text-brand-700 rounded px-1 py-0.5 truncate">{{ event.name }}</a>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div>
+            <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1">{{ month }}月の活動日</h4>
+            {% if month_events %}
+            <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                {% for event in month_events %}
+                <a href="/circle/{{ event.circle_id }}" class="p-3 flex items-center gap-3">
+                    <div class="text-center w-10 flex-shrink-0">
+                        <div class="text-sm font-black text-slate-800">{{ event.date.day }}</div>
+                        <div class="text-[9px] font-bold text-slate-400">{{ weekday_labels[event.date.weekday()] }}曜</div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h5 class="text-xs font-bold truncate">{{ event.name }}</h5>
+                        <p class="text-[10px] text-slate-500 truncate">{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% endif %}{% if event.place %} ・ {{ event.place }}{% endif %}</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
+                {% endfor %}
+            </div>
+            {% elif not has_follows %}
+            <div class="text-center py-10">
+                <div class="text-4xl mb-3">📅</div>
+                <p class="text-xs font-bold text-slate-500">まだサークルをフォローしていません</p>
+                <p class="text-[10px] text-slate-400 mt-1">フォローしたサークルの活動日がここに表示されます</p>
+            </div>
+            {% else %}
+            <p class="text-center text-xs font-bold text-slate-400 py-10">今月は登録されている活動日がありません</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
