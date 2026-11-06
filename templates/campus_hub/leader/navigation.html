@@ -1,14 +1,10 @@
 <!-- 幹部用 下部ナビゲーション（リンクで画面遷移し、選択中タブはサーバー側の active で決める） -->
 <div class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30">
     <div class="flex justify-between items-center px-8 py-2">
-        <a href="/leader" class="flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-home' else 'text-slate-400 hover:text-slate-700' }}">
+        <a href="/leader" class="flex-1 flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-home' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-solid fa-gauge text-xl"></i><span class="text-[9px] font-bold">管理</span>
         </a>
-        <a href="/leader/dm" class="flex flex-col items-center gap-1 relative {{ 'text-leader-600' if active == 'leader-dm' else 'text-slate-400 hover:text-slate-700' }}">
-            <i class="fa-regular fa-comments text-xl"></i><span class="text-[9px] font-bold">問い合わせ</span>
-            <span class="absolute top-0 right-1/2 translate-x-4 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-        </a>
-        <a href="/leader/settings" class="flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-settings' else 'text-slate-400 hover:text-slate-700' }}">
+        <a href="/leader/settings" class="flex-1 flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-settings' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-solid fa-gear text-xl"></i><span class="text-[9px] font-bold">設定</span>
         </a>
     </div>

@@ -30,9 +30,7 @@ flowchart TD
     subgraph leader ["サークル幹部"]
         DASH["/leader ダッシュボード"]
         FOL["/leader/followers フォロワー一覧"]
-        LDM["/leader/dm 問い合わせ"]
         SET["/leader/settings 設定"]
-        DASH <--> LDM
         DASH <--> SET
         DASH --> FOL
         FOL --> DASH

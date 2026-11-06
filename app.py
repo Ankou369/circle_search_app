@@ -385,16 +385,6 @@ def leader_home():
     )
 
 
-@app.route("/leader/dm")
-@login_required
-def leader_dm():
-    if current_type() != "circle_user":
-        return redirect("/")
-    return render_template(
-        "campus_hub/leader/dm.html", nav="leader", active="leader-dm"
-    )
-
-
 @app.route("/leader/settings")
 @login_required
 def leader_settings():
