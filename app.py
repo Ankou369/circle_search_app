@@ -30,6 +30,22 @@ FACULTIES = [
 # 活動曜日（Python の date.weekday() と同じ番号: 月=0 〜 日=6）
 WEEKDAYS = [(0, "月"), (1, "火"), (2, "水"), (3, "木"), (4, "金"), (5, "土"), (6, "日")]
 
+# 相性診断の質問項目（キーは circle_diagnostic の列名 q1〜q10 と対応）
+# (キー, 観点ラベル, 学生への質問文, サークル側の自己評価文)
+# 点数はどちらも 1〜10（10 = とてもあてはまる、1 = 全くあてはまらない）
+DIAGNOSTIC_QUESTIONS = [
+    ("q1", "運動系", "体を動かす活動は好きですか？", "体を動かす活動が中心だ"),
+    ("q2", "サークル内交流", "大人数でワイワイ賑やかに盛り上がるのは好きですか？", "大人数でワイワイ賑やかに盛り上がる雰囲気だ"),
+    ("q3", "活動日数", "週に何度も頻繁に活動したいですか？", "週に何度も頻繁に活動している"),
+    ("q4", "新規性", "今までにやったことがない新しいことに挑戦したいですか？", "新しいことに挑戦する機会が多い"),
+    ("q5", "勝負", "勝ち負けをはっきりさせる環境は好きですか？", "勝ち負けをはっきりさせる活動だ（対戦・大会志向）"),
+    ("q6", "部費", "活動の充実のためなら、お金を多く支払ってもいいと思えますか？", "部費・活動費は高めだ"),
+    ("q7", "上下関係", "先輩・後輩といった立場や規律を重んじる環境は好きですか？", "先輩・後輩の立場や規律を重んじる雰囲気だ"),
+    ("q8", "活動場所（屋外）", "屋内よりも屋外（アウトドア）で活動する方が好きですか？", "屋外（アウトドア）での活動が中心だ"),
+    ("q9", "活動場所（学外）", "学内の決まった場所だけでなく、色々な場所へ移動して活動したいですか？", "学内だけでなく、色々な場所へ移動して活動することが多い"),
+    ("q10", "人前に立つ", "ステージの上など、人前に立って目立つのは好きですか？", "ステージなど、人前に立って目立つ機会が多い"),
+]
+
 app = Flask(__name__)
 # セッション署名用の秘密鍵（環境変数があればそれを使い、無ければ開発用）
 app.secret_key = os.environ.get("SECRET_KEY", "campus-hub-dev-secret")
@@ -135,6 +151,17 @@ def init_db():
             fisheries INTEGER DEFAULT 0
         )
     """)
+    # 相性診断用プロフィール（サークル側が自分たちで決める 1〜10 の自己評価）
+    diag_cols = ", ".join(
+        f"{key} INTEGER" for key, _label, _student_q, _circle_q in DIAGNOSTIC_QUESTIONS
+    )
+    db.execute(f"""
+        CREATE TABLE IF NOT EXISTS circle_diagnostic (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            circle_id TEXT UNIQUE NOT NULL,
+            {diag_cols}
+        )
+    """)
     db.commit()
     db.close()
 
@@ -194,6 +221,19 @@ def schedule_text(info):
     elif info["activity_start"]:
         text += f" {info['activity_start']}〜"
     return text
+
+
+def diagnostic_score(user_answers, circle_row):
+    """相性スコア: 項目ごとに (学生の回答 − サークルの点数) の二乗を合計する。
+
+    小さいほど相性が良い（全項目一致で 0、最大は 10項目 × 9² = 810）。
+    """
+    total = 0
+    for (key, _label, _student_q, _circle_q), answer in zip(
+        DIAGNOSTIC_QUESTIONS, user_answers
+    ):
+        total += (answer - circle_row[key]) ** 2
+    return total
 
 
 def get_posts(db):
@@ -463,12 +503,55 @@ def my_calendar():
     )
 
 
-@app.route("/diagnostic")
+@app.route("/diagnostic", methods=["GET", "POST"])
 @login_required
 def diagnostic():
     if current_type() == "circle_user":
         return redirect("/leader")
-    return render_template("campus_hub/diagnostic.html")
+    if request.method == "POST":
+        answers = []
+        raw_answers = {}
+        valid = True
+        for key, _label, _student_q, _circle_q in DIAGNOSTIC_QUESTIONS:
+            raw = request.form.get(key)
+            raw_answers[key] = raw
+            try:
+                value = int(raw)
+                if not 1 <= value <= 10:
+                    raise ValueError
+                answers.append(value)
+            except (TypeError, ValueError):
+                valid = False
+        if not valid:
+            return render_template(
+                "campus_hub/diagnostic.html",
+                questions=DIAGNOSTIC_QUESTIONS,
+                answers=raw_answers,
+                error="すべての質問に 1〜10 で答えてください。",
+            )
+        db = get_db()
+        results = []
+        for row in db.execute("SELECT * FROM circle_diagnostic").fetchall():
+            results.append(
+                {
+                    "circle_id": row["circle_id"],
+                    "name": circle_display_name(db, row["circle_id"]),
+                    "score": diagnostic_score(answers, row),
+                }
+            )
+        # スコアが小さい（相性が良い）順、同点は名前順
+        results.sort(key=lambda r: (r["score"], r["name"]))
+        return render_template(
+            "campus_hub/diagnostic_result.html",
+            results=results,
+            answers=answers,
+        )
+    return render_template(
+        "campus_hub/diagnostic.html",
+        questions=DIAGNOSTIC_QUESTIONS,
+        answers={},
+        error=None,
+    )
 
 
 ### 幹部の画面 ################################
@@ -724,6 +807,38 @@ def regist_circle_info(circle_id):
                 f"INSERT INTO circle_number_of_students (circle_id, {col_names}) VALUES (?, {placeholders})",
                 (circle_id,) + tuple(counts[col] for col in cols),
             )
+        # 相性診断用プロフィール（circle_diagnostic）も一緒に保存する
+        # 10項目すべてに 1〜10 が入っているときだけ保存する（未設定・一部だけは対象外）
+        diag_values = []
+        diag_complete = True
+        for key, _label, _student_q, _circle_q in DIAGNOSTIC_QUESTIONS:
+            raw = request.form.get(f"diag_{key}")
+            try:
+                value = int(raw)
+                if not 1 <= value <= 10:
+                    raise ValueError
+                diag_values.append(value)
+            except (TypeError, ValueError):
+                diag_complete = False
+                break
+        if diag_complete:
+            diag_keys = [key for key, _l, _s, _c in DIAGNOSTIC_QUESTIONS]
+            existing_diag = db.execute(
+                "SELECT id FROM circle_diagnostic WHERE circle_id = ?", (circle_id,)
+            ).fetchone()
+            if existing_diag:
+                assignments = ", ".join(f"{key} = ?" for key in diag_keys)
+                db.execute(
+                    f"UPDATE circle_diagnostic SET {assignments} WHERE circle_id = ?",
+                    tuple(diag_values) + (circle_id,),
+                )
+            else:
+                col_names = ", ".join(diag_keys)
+                placeholders = ", ".join("?" for _ in diag_keys)
+                db.execute(
+                    f"INSERT INTO circle_diagnostic (circle_id, {col_names}) VALUES (?, {placeholders})",
+                    (circle_id,) + tuple(diag_values),
+                )
         db.commit()
         return redirect(url_for("circle_account", circle_id=circle_id))
     circle_info = db.execute(
@@ -737,6 +852,9 @@ def regist_circle_info(circle_id):
         selected_weekdays = [
             int(d) for d in circle_info["activity_weekdays"].split(",") if d.strip().isdigit()
         ]
+    diag_row = db.execute(
+        "SELECT * FROM circle_diagnostic WHERE circle_id = ?", (circle_id,)
+    ).fetchone()
     return render_template(
         "campus_hub/regist_circle_info.html",
         circle_id=circle_id,
@@ -745,6 +863,8 @@ def regist_circle_info(circle_id):
         students_row=students_row,
         weekdays=WEEKDAYS,
         selected_weekdays=selected_weekdays,
+        diagnostic_questions=DIAGNOSTIC_QUESTIONS,
+        diag_row=diag_row,
     )
 
 

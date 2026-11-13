@@ -57,6 +57,23 @@
                     {% endfor %}
                 </div>
             </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">相性診断用プロフィール（自分たちの実態を 1〜10 で自己評価）</label>
+                <p class="text-[10px] text-slate-400 mb-2">10項目すべてを選ぶと、学生の相性診断のおすすめに表示されます（10 = とてもあてはまる、1 = 全くあてはまらない）。</p>
+                <div class="space-y-2">
+                    {% for key, label, student_q, circle_q in diagnostic_questions %}
+                    <label class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                        <span class="text-[11px] font-bold text-slate-600">{{ label }}：{{ circle_q }}</span>
+                        <select name="diag_{{ key }}" class="w-20 p-1.5 rounded-lg bg-white border border-slate-200 text-sm text-right">
+                            <option value="">未設定</option>
+                            {% for v in range(1, 11) %}
+                            <option value="{{ v }}" {% if diag_row and diag_row[key] == v %}selected{% endif %}>{{ v }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
             <button type="submit" class="w-full bg-leader-600 text-white font-bold py-3 rounded-xl text-sm">登録する</button>
         </form>
     </div>
