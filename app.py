@@ -1,7 +1,8 @@
+import json
 import os
 import sqlite3
 from calendar import monthcalendar
-from datetime import date
+from datetime import date, datetime
 
 from flask import (Flask, flash, g, redirect, render_template, request,
                    send_from_directory, url_for)
@@ -162,6 +163,16 @@ def init_db():
             {diag_cols}
         )
     """)
+    # 相性診断の履歴（マイページで直近1回分を表示するために保存する）
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS diagnostic_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            answers TEXT,
+            results TEXT,
+            created_at TEXT
+        )
+    """)
     db.commit()
     db.close()
 
@@ -234,6 +245,28 @@ def diagnostic_score(user_answers, circle_row):
     ):
         total += (answer - circle_row[key]) ** 2
     return total
+
+
+def latest_diagnostic(db, user_id):
+    """学生の直近1回の診断結果を返す（無ければ None）。
+
+    results は保存時の順位のまま、サークル名は表示時点のもので解決する。
+    """
+    row = db.execute(
+        "SELECT * FROM diagnostic_history WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    if not row:
+        return None
+    results = [
+        {
+            "circle_id": r["circle_id"],
+            "name": circle_display_name(db, r["circle_id"]),
+            "score": r["score"],
+        }
+        for r in json.loads(row["results"])
+    ]
+    return {"created_at": row["created_at"], "results": results}
 
 
 def get_posts(db):
@@ -423,6 +456,7 @@ def profile():
         nav="student",
         active="profile",
         student_info=student_info,
+        latest_diag=latest_diagnostic(db, current_user.id),
     )
 
 
@@ -541,6 +575,24 @@ def diagnostic():
             )
         # スコアが小さい（相性が良い）順、同点は名前順
         results.sort(key=lambda r: (r["score"], r["name"]))
+        if results:
+            # マイページで直近1回分を表示するため、履歴に保存する
+            db.execute(
+                "INSERT INTO diagnostic_history (user_id, answers, results, created_at)"
+                " VALUES (?, ?, ?, ?)",
+                (
+                    current_user.id,
+                    ",".join(str(a) for a in answers),
+                    json.dumps(
+                        [
+                            {"circle_id": r["circle_id"], "score": r["score"]}
+                            for r in results
+                        ]
+                    ),
+                    datetime.now().strftime("%Y-%m-%d %H:%M"),
+                ),
+            )
+            db.commit()
         return render_template(
             "campus_hub/diagnostic_result.html",
             results=results,
@@ -551,6 +603,23 @@ def diagnostic():
         questions=DIAGNOSTIC_QUESTIONS,
         answers={},
         error=None,
+    )
+
+
+@app.route("/diagnostic/result")
+@login_required
+def diagnostic_result():
+    """直近1回の診断結果をもう一度見る（マイページから）。"""
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    db = get_db()
+    latest = latest_diagnostic(db, current_user.id)
+    if latest is None:
+        return redirect("/diagnostic")
+    return render_template(
+        "campus_hub/diagnostic_result.html",
+        results=latest["results"],
+        answers=None,
     )
 
 

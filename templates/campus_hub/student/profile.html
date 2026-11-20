@@ -13,13 +13,36 @@
             <p class="text-[10px] text-slate-500 mt-1">{{ student_info.faculty if student_info and student_info.faculty else '' }} {{ current_user.id }}</p>
         </div>
 
+        {% if latest_diag %}
+        <div class="bg-white border border-brand-200 p-4 rounded-2xl shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-xs font-bold text-slate-800"><i class="fa-solid fa-wand-magic-sparkles text-brand-500 mr-1.5"></i>最近の相性診断</h4>
+                <span class="text-[10px] text-slate-400">{{ latest_diag.created_at }}</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+                {% for r in latest_diag.results[:3] %}
+                <a href="/circle/{{ r.circle_id }}" class="flex items-center gap-2 py-2">
+                    <span class="text-[11px] font-black {% if loop.first %}text-brand-500{% else %}text-slate-400{% endif %} w-8">第{{ loop.index }}位</span>
+                    <span class="flex-1 text-xs font-bold text-slate-800">{{ r.name }}</span>
+                    <span class="text-[10px] font-bold text-slate-400">スコア {{ r.score }}</span>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
+                {% endfor %}
+            </div>
+            <div class="flex gap-2 mt-3">
+                <a href="/diagnostic/result" class="flex-1 text-center bg-brand-500 text-white text-[11px] font-bold py-2 rounded-lg">結果を全部見る</a>
+                <a href="/diagnostic" class="flex-1 text-center bg-white border border-slate-200 text-slate-600 text-[11px] font-bold py-2 rounded-lg">やり直す</a>
+            </div>
+        </div>
+        {% else %}
         <a href="/diagnostic" class="w-full bg-white border border-brand-200 p-3 rounded-xl flex items-center justify-between shadow-sm active:scale-95 transition">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-500 flex items-center justify-center"><i class="fa-solid fa-wand-magic-sparkles text-sm"></i></div>
-                <div class="text-left"><h4 class="text-xs font-bold text-slate-800">相性診断をやり直す</h4></div>
+                <div class="text-left"><h4 class="text-xs font-bold text-slate-800">相性診断をする</h4></div>
             </div>
             <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
         </a>
+        {% endif %}
 
         <div>
             <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1"><i class="fa-regular fa-thumbs-up mr-1.5"></i>いいねしたサークル</h4>
