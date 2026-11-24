@@ -1,10 +1,10 @@
 <!-- 幹部用 下部ナビゲーション（リンクで画面遷移し、選択中タブはサーバー側の active で決める） -->
-<div class="fixed bottom-0 inset-x-0 bg-slate-950 border-t border-slate-800 z-30">
+<div class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30">
     <div class="flex justify-between items-center px-8 py-2">
-        <a href="/leader" class="flex-1 flex flex-col items-center gap-1 {{ 'text-white' if active == 'leader-home' else 'text-slate-500 hover:text-slate-200' }}">
+        <a href="/leader" class="flex-1 flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-home' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-solid fa-gauge text-xl"></i><span class="text-[9px] font-bold">管理</span>
         </a>
-        <a href="/leader/settings" class="flex-1 flex flex-col items-center gap-1 {{ 'text-white' if active == 'leader-settings' else 'text-slate-500 hover:text-slate-200' }}">
+        <a href="/leader/settings" class="flex-1 flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-settings' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-solid fa-gear text-xl"></i><span class="text-[9px] font-bold">設定</span>
         </a>
     </div>
