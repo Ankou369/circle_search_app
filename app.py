@@ -419,12 +419,22 @@ def index():
     if current_type() == "circle_user":
         return redirect("/leader")
     db = get_db()
+    tab = request.args.get("tab", "all")
+    if tab not in ("all", "following", "others"):
+        tab = "all"
+    follow_list = get_follow_list(db, current_user.id)
+    posts = get_posts(db)
+    if tab == "following":
+        posts = [p for p in posts if p["userid"] in follow_list]
+    elif tab == "others":
+        posts = [p for p in posts if p["userid"] not in follow_list]
     return render_template(
         "campus_hub/student/home.html",
         nav="student",
         active="home",
-        posts=get_posts(db),
-        follow_list=get_follow_list(db, current_user.id),
+        posts=posts,
+        follow_list=follow_list,
+        tab=tab,
     )
 
 

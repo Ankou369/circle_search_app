@@ -7,6 +7,11 @@
         <span class="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center"><i class="fa-regular fa-bell text-slate-100"></i></span>
     </div>
     <div class="flex-1 p-4 space-y-4 pb-24">
+        <div class="flex gap-2">
+            <a href="/?tab=all" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'all' else 'bg-white border border-slate-200 text-slate-500' }}">すべて</a>
+            <a href="/?tab=following" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'following' else 'bg-white border border-slate-200 text-slate-500' }}">フォロー中</a>
+            <a href="/?tab=others" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'others' else 'bg-white border border-slate-200 text-slate-500' }}">その他</a>
+        </div>
         {% if posts %}
             {% for post in posts %}
             <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -53,8 +58,16 @@
         {% else %}
             <div class="text-center py-16">
                 <div class="text-4xl mb-3">📭</div>
+                {% if tab == 'following' %}
+                <p class="text-xs font-bold text-slate-500">フォロー中のサークルの投稿はまだありません</p>
+                <p class="text-[10px] text-slate-400 mt-1">サークルをフォローすると、その投稿だけをここで見られます</p>
+                {% elif tab == 'others' %}
+                <p class="text-xs font-bold text-slate-500">フォローしていないサークルの投稿はまだありません</p>
+                <p class="text-[10px] text-slate-400 mt-1">新しいサークルの投稿はここに表示されます</p>
+                {% else %}
                 <p class="text-xs font-bold text-slate-500">まだ投稿がありません</p>
                 <p class="text-[10px] text-slate-400 mt-1">サークル幹部が投稿するとここに表示されます</p>
+                {% endif %}
             </div>
         {% endif %}
     </div>
