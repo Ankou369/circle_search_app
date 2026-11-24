@@ -39,7 +39,7 @@ CATEGORIES = [("sports", "運動系"), ("culture", "文化系")]
 
 # 学生の新規登録で使えるメールアドレスのドメイン（大学メールのみ許可し、
 # メール確認が取れるまで本登録しないことで荒らしを防ぐ）
-UNIVERSITY_EMAIL_DOMAIN = "nagasaki-u.ac.jp"
+UNIVERSITY_EMAIL_DOMAIN = "ms.nagasaki-u.ac.jp"
 
 # メール送信設定（環境変数 CAMPUSHUB_SMTP_* で指定する）
 # 未設定のときは開発モードとして、確認リンクをサーバーのコンソールに表示する
