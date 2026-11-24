@@ -1053,7 +1053,7 @@ def chat_list():
         "campus_hub/chat_list.html",
         items=items,
         nav="leader" if is_circle else "student",
-        active="leader-chat" if is_circle else "",
+        active="leader-chat" if is_circle else "chat",
     )
 
 
