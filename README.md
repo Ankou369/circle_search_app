@@ -45,6 +45,8 @@ flowchart TD
     end
     DET["/circle/サークル詳細"]
     PDET["/post/投稿詳細（コメント）"]
+    CHAT["/chat 会話一覧"]
+    ROOM["/chat/room トーク"]
     REG["/regist_circle_info 情報登録・編集"]
     L -->|学生ログイン成功| HOME
     SU -->|登録後| L
@@ -56,6 +58,10 @@ flowchart TD
     DET --> PDET
     LFEED --> DET
     LFEED --> PDET
+    HOME --> CHAT
+    DASH --> CHAT
+    DET -->|連絡する（学生のみ開始可）| ROOM
+    CHAT <--> ROOM
     DASH --> REG
     SET --> REG
     DET -->|自分のサークルの場合| REG

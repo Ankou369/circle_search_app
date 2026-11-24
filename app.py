@@ -4,8 +4,8 @@ import sqlite3
 from calendar import monthcalendar
 from datetime import date, datetime
 
-from flask import (Flask, flash, g, redirect, render_template, request,
-                   send_from_directory, session, url_for)
+from flask import (Flask, flash, g, jsonify, redirect, render_template,
+                   request, send_from_directory, session, url_for)
 from flask_login import (LoginManager, UserMixin, current_user, login_required,
                          login_user, logout_user)
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -197,6 +197,28 @@ def init_db():
             created_at TEXT
         )
     """)
+    # チャットの会話（学生×サークルのペア。開始できるのは学生側だけ）
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS chat_room (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            circle_id TEXT NOT NULL,
+            created_at TEXT,
+            UNIQUE (student_id, circle_id)
+        )
+    """)
+    # チャットのメッセージ（本文・画像のどちらか、または両方）
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS chat_message (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL,
+            sender_id TEXT NOT NULL,
+            body TEXT,
+            image_path TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+    """)
     db.commit()
     db.close()
 
@@ -337,6 +359,47 @@ def get_post_comments(db, post_id):
          WHERE post_comment.post_id = ?
          ORDER BY post_comment.id
     """, (post_id,)).fetchall()
+
+
+def chat_unread_count(db, user_id):
+    """自分宛ての未読チャットメッセージ数。"""
+    return db.execute(
+        """
+        SELECT COUNT(*) FROM chat_message
+          JOIN chat_room ON chat_room.id = chat_message.room_id
+         WHERE (chat_room.student_id = ? OR chat_room.circle_id = ?)
+           AND chat_message.sender_id != ?
+           AND chat_message.is_read = 0
+        """,
+        (user_id, user_id, user_id),
+    ).fetchone()[0]
+
+
+def get_chat_room(db, room_id, user_id):
+    """自分が参加者である会話だけを返す（他人の会話は None）。"""
+    return db.execute(
+        "SELECT * FROM chat_room WHERE id = ? AND (student_id = ? OR circle_id = ?)",
+        (room_id, user_id, user_id),
+    ).fetchone()
+
+
+def chat_partner_info(db, room, user_id):
+    """会話相手の id・表示名・ロゴを返す。"""
+    if room["student_id"] == user_id:
+        partner_id = room["circle_id"]
+        row = db.execute(
+            "SELECT circle_name, logo_path FROM circle_info WHERE circle_id = ?",
+            (partner_id,),
+        ).fetchone()
+        name = row["circle_name"] if row and row["circle_name"] else partner_id
+        logo = row["logo_path"] if row else None
+        return {"id": partner_id, "name": name, "logo_path": logo}
+    partner_id = room["student_id"]
+    row = db.execute(
+        "SELECT name FROM user WHERE userid = ?", (partner_id,)
+    ).fetchone()
+    name = row["name"] if row and row["name"] else partner_id
+    return {"id": partner_id, "name": name, "logo_path": None}
 
 
 def get_follow_list(db, user_id):
@@ -494,6 +557,7 @@ def render_feed(nav, active, can_post=False):
         can_post=can_post,
         feed_base="/" if nav == "student" else "/leader/home",
         leader_circle_name=circle_display_name(db, current_user.id) if can_post else "",
+        chat_unread=chat_unread_count(db, current_user.id),
     )
 
 
@@ -946,6 +1010,163 @@ def delete_comment(comment_id):
         db.commit()
         return redirect(f"/post/{row['post_id']}")
     return redirect("/")
+
+
+### チャット（学生×サークルの1対1。開始できるのは学生側だけ） ##########
+
+@app.route("/chat")
+@login_required
+def chat_list():
+    db = get_db()
+    rooms = db.execute(
+        """
+        SELECT chat_room.*,
+               (SELECT MAX(id) FROM chat_message
+                 WHERE chat_message.room_id = chat_room.id) AS last_id
+          FROM chat_room
+         WHERE chat_room.student_id = ? OR chat_room.circle_id = ?
+         ORDER BY COALESCE(last_id, 0) DESC, chat_room.id DESC
+        """,
+        (current_user.id, current_user.id),
+    ).fetchall()
+    items = []
+    for room in rooms:
+        last = db.execute(
+            "SELECT * FROM chat_message WHERE room_id = ? ORDER BY id DESC LIMIT 1",
+            (room["id"],),
+        ).fetchone()
+        unread = db.execute(
+            "SELECT COUNT(*) FROM chat_message"
+            " WHERE room_id = ? AND sender_id != ? AND is_read = 0",
+            (room["id"], current_user.id),
+        ).fetchone()[0]
+        items.append(
+            {
+                "room": room,
+                "partner": chat_partner_info(db, room, current_user.id),
+                "last": last,
+                "unread": unread,
+            }
+        )
+    is_circle = current_type() == "circle_user"
+    return render_template(
+        "campus_hub/chat_list.html",
+        items=items,
+        nav="leader" if is_circle else "student",
+        active="leader-chat" if is_circle else "",
+    )
+
+
+@app.route("/chat/start/<string:circle_id>")
+@login_required
+def chat_start(circle_id):
+    """学生がサークルとの会話を始める（サークル側からは開始できない）。"""
+    if current_type() != "normal_user":
+        return redirect("/chat")
+    db = get_db()
+    if not db.execute(
+        "SELECT id FROM circle_account WHERE circle_id = ?", (circle_id,)
+    ).fetchone():
+        return redirect("/list")
+    room = db.execute(
+        "SELECT * FROM chat_room WHERE student_id = ? AND circle_id = ?",
+        (current_user.id, circle_id),
+    ).fetchone()
+    if room is None:
+        cur = db.execute(
+            "INSERT INTO chat_room (student_id, circle_id, created_at) VALUES (?, ?, ?)",
+            (current_user.id, circle_id, datetime.now().strftime("%Y-%m-%d %H:%M")),
+        )
+        db.commit()
+        room_id = cur.lastrowid
+    else:
+        room_id = room["id"]
+    return redirect(f"/chat/room/{room_id}")
+
+
+@app.route("/chat/room/<int:room_id>")
+@login_required
+def chat_room(room_id):
+    db = get_db()
+    room = get_chat_room(db, room_id, current_user.id)
+    if room is None:
+        return redirect("/chat")
+    # 開いたら相手からのメッセージを既読にする
+    db.execute(
+        "UPDATE chat_message SET is_read = 1 WHERE room_id = ? AND sender_id != ?",
+        (room_id, current_user.id),
+    )
+    db.commit()
+    messages = db.execute(
+        "SELECT * FROM chat_message WHERE room_id = ? ORDER BY id", (room_id,)
+    ).fetchall()
+    return render_template(
+        "campus_hub/chat_room.html",
+        room=room,
+        partner=chat_partner_info(db, room, current_user.id),
+        messages=messages,
+    )
+
+
+@app.route("/chat/room/<int:room_id>/send", methods=["POST"])
+@login_required
+def chat_send(room_id):
+    db = get_db()
+    room = get_chat_room(db, room_id, current_user.id)
+    if room is None:
+        return redirect("/chat")
+    body = (request.form.get("body") or "").strip()
+    image = request.files.get("image")
+    image_path = None
+    if image and image.filename:
+        image_path = f"chat_{room_id}_{secure_filename(image.filename)}"
+        image.save(os.path.join("uploads", image_path))
+    if body or image_path:
+        db.execute(
+            "INSERT INTO chat_message (room_id, sender_id, body, image_path, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (room_id, current_user.id, body or None, image_path,
+             datetime.now().strftime("%Y-%m-%d %H:%M")),
+        )
+        db.commit()
+    return redirect(f"/chat/room/{room_id}")
+
+
+@app.route("/chat/room/<int:room_id>/messages")
+@login_required
+def chat_messages(room_id):
+    """新着メッセージのポーリング用（JSON）。取得ついでに既読も付ける。"""
+    db = get_db()
+    room = get_chat_room(db, room_id, current_user.id)
+    if room is None:
+        return jsonify({"messages": []})
+    try:
+        after = int(request.args.get("after", "0"))
+    except ValueError:
+        after = 0
+    rows = db.execute(
+        "SELECT * FROM chat_message WHERE room_id = ? AND id > ? ORDER BY id",
+        (room_id, after),
+    ).fetchall()
+    db.execute(
+        "UPDATE chat_message SET is_read = 1 WHERE room_id = ? AND sender_id != ?",
+        (room_id, current_user.id),
+    )
+    db.commit()
+    return jsonify(
+        {
+            "messages": [
+                {
+                    "id": m["id"],
+                    "mine": m["sender_id"] == current_user.id,
+                    "body": m["body"],
+                    "image_path": m["image_path"],
+                    "created_at": m["created_at"],
+                }
+                for m in rows
+            ]
+        }
+    )
 
 
 @app.route("/uploads/<filename>")
