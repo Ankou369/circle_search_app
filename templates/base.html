@@ -28,7 +28,8 @@
                         }
                     },
                     fontFamily: {
-                        sans: ['"Noto Sans JP"', 'sans-serif']
+                        // 大学LMSのようなOS標準の日本語ゴシック体スタック
+                        sans: ['"Hiragino Kaku Gothic ProN"', '"Hiragino Sans"', '"Yu Gothic UI"', '"Yu Gothic"', '"Noto Sans JP"', '"Meiryo"', 'sans-serif']
                     }
                 }
             }
@@ -39,7 +40,7 @@
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-    <!-- Noto Sans JP (共通CSSで指定されているフォント) -->
+    <!-- Noto Sans JP（フォントスタックのフォールバック用Webフォント） -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
