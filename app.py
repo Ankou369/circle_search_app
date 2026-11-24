@@ -1,8 +1,11 @@
 import json
 import os
+import secrets
+import smtplib
 import sqlite3
 from calendar import monthcalendar
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from email.message import EmailMessage
 
 from flask import (Flask, flash, g, jsonify, redirect, render_template,
                    request, send_from_directory, session, url_for)
@@ -33,6 +36,18 @@ WEEKDAYS = [(0, "月"), (1, "火"), (2, "水"), (3, "木"), (4, "金"), (5, "土
 
 # サークルの分類（一覧の絞り込み用。circle_info.category に保存する）
 CATEGORIES = [("sports", "運動系"), ("culture", "文化系")]
+
+# 学生の新規登録で使えるメールアドレスのドメイン（大学メールのみ許可し、
+# メール確認が取れるまで本登録しないことで荒らしを防ぐ）
+UNIVERSITY_EMAIL_DOMAIN = "nagasaki-u.ac.jp"
+
+# メール送信設定（環境変数 CAMPUSHUB_SMTP_* で指定する）
+# 未設定のときは開発モードとして、確認リンクをサーバーのコンソールに表示する
+SMTP_HOST = os.environ.get("CAMPUSHUB_SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("CAMPUSHUB_SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("CAMPUSHUB_SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("CAMPUSHUB_SMTP_PASSWORD", "")
+SMTP_FROM = os.environ.get("CAMPUSHUB_SMTP_FROM", "") or SMTP_USER
 
 # 相性診断の質問項目（キーは circle_diagnostic の列名 q1〜q10 と対応）
 # (キー, 観点ラベル, 学生への質問文, サークル側の自己評価文)
@@ -194,6 +209,18 @@ def init_db():
             post_id INTEGER NOT NULL,
             user_id TEXT NOT NULL,
             body TEXT NOT NULL,
+            created_at TEXT
+        )
+    """)
+    # 学生の仮登録（メール確認が終わるまで本登録しない）
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS pending_user (
+            token TEXT PRIMARY KEY,
+            userid TEXT NOT NULL,
+            password TEXT NOT NULL,
+            name TEXT,
+            faculty TEXT,
+            expires_at TEXT,
             created_at TEXT
         )
     """)
@@ -437,26 +464,105 @@ def render_auth(role, mode, error_message="", id_value=""):
     )
 
 
+def send_verification_email(to_email, verify_url):
+    """登録確認メールを送る。SMTP 未設定なら開発モードとしてリンクをコンソールに出す。"""
+    if not (SMTP_HOST and SMTP_USER and SMTP_PASSWORD):
+        print(f"[開発モード] {to_email} 宛の登録確認リンク: {verify_url}", flush=True)
+        return False
+    msg = EmailMessage()
+    msg["Subject"] = "【CampusHub】メールアドレスの確認"
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    msg.set_content(
+        "CampusHub へのご登録ありがとうございます。\n"
+        "以下のリンクを開くと登録が完了します（リンクは24時間有効です）。\n\n"
+        f"{verify_url}\n\n"
+        "心当たりがない場合は、このメールを破棄してください。\n"
+    )
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASSWORD)
+            smtp.send_message(msg)
+        return True
+    except Exception as exc:  # 送信に失敗しても仮登録は残し、リンクはコンソールに出す
+        print(f"[メール送信失敗: {exc}] {to_email} 宛の登録確認リンク: {verify_url}", flush=True)
+        return False
+
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if current_user.is_authenticated:
         return redirect("/")
     if request.method == "GET":
         return render_auth("student", "register")
-    userid = request.form.get("userid")
+    userid = (request.form.get("userid") or "").strip()
     password = request.form.get("password")
     name = request.form.get("name")
     faculty = request.form.get("faculty")
     if not userid or not password:
         return render_auth("student", "register", "メールアドレスとパスワードを入力してください。", userid or "")
-    password_hash = generate_password_hash(password)
+    if not userid.endswith("@" + UNIVERSITY_EMAIL_DOMAIN):
+        return render_auth(
+            "student", "register",
+            f"大学のメールアドレス（@{UNIVERSITY_EMAIL_DOMAIN}）を入力してください。",
+            userid,
+        )
     db = get_db()
     if db.execute("SELECT id FROM user WHERE userid = ?", (userid,)).fetchone():
-        return render_auth("student", "register", "このIDはすでに使われています。", userid)
+        return render_auth("student", "register", "このメールアドレスはすでに登録されています。", userid)
+    # 以前の仮登録があれば消して作り直す（＝確認メールの再送になる）
+    db.execute("DELETE FROM pending_user WHERE userid = ?", (userid,))
+    token = secrets.token_urlsafe(32)
+    now = datetime.now()
+    db.execute(
+        "INSERT INTO pending_user (token, userid, password, name, faculty, expires_at, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            token,
+            userid,
+            generate_password_hash(password),
+            name,
+            faculty,
+            (now + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S"),
+            now.strftime("%Y-%m-%d %H:%M:%S"),
+        ),
+    )
+    db.commit()
+    verify_url = request.host_url.rstrip("/") + "/verify/" + token
+    send_verification_email(userid, verify_url)
+    return render_template("campus_hub/verify_sent.html", email=userid)
+
+
+@app.route("/verify/<string:token>")
+def verify_email(token):
+    """確認メールのリンク。開かれたら仮登録を本登録に移す。"""
+    db = get_db()
+    row = db.execute(
+        "SELECT * FROM pending_user WHERE token = ?", (token,)
+    ).fetchone()
+    if row is None:
+        return render_template(
+            "campus_hub/verify_result.html",
+            message="この確認リンクは無効です。お手数ですが、もう一度新規登録からやり直してください。",
+        )
+    if row["expires_at"] < datetime.now().strftime("%Y-%m-%d %H:%M:%S"):
+        db.execute("DELETE FROM pending_user WHERE token = ?", (token,))
+        db.commit()
+        return render_template(
+            "campus_hub/verify_result.html",
+            message="確認リンクの期限（24時間）が切れています。もう一度新規登録からやり直してください。",
+        )
+    if db.execute("SELECT id FROM user WHERE userid = ?", (row["userid"],)).fetchone():
+        db.execute("DELETE FROM pending_user WHERE token = ?", (token,))
+        db.commit()
+        flash("すでに登録が完了しています。ログインしてください。")
+        return redirect("/login")
     db.execute(
         "INSERT INTO user (userid, password, name, faculty) VALUES (?, ?, ?, ?)",
-        (userid, password_hash, name, faculty),
+        (row["userid"], row["password"], row["name"], row["faculty"]),
     )
+    db.execute("DELETE FROM pending_user WHERE token = ?", (token,))
     db.commit()
     flash("登録が完了しました。ログインしてください。")
     return redirect("/login")
