@@ -552,6 +552,8 @@ def diagnostic_home():
     diag_count = db.execute("SELECT COUNT(*) FROM circle_diagnostic").fetchone()[0]
     return render_template(
         "campus_hub/diagnostic_home.html",
+        nav="student",
+        active="diagnostic",
         latest_diag=latest_diagnostic(db, current_user.id),
         diag_count=diag_count,
     )
