@@ -11,7 +11,11 @@
             {% for post in posts %}
             <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                 <div class="p-3 flex items-center gap-2.5">
+                    {% if post.logo_path %}
+                    <a href="/circle/{{ post.userid }}"><img src="/uploads/{{ post.logo_path }}" class="w-9 h-9 rounded-full object-cover border border-slate-200" alt="{{ post.display_name or post.userid }}のロゴ"></a>
+                    {% else %}
                     <a href="/circle/{{ post.userid }}" class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">🏃</a>
+                    {% endif %}
                     <div class="flex-1 min-w-0">
                         <a href="/circle/{{ post.userid }}" class="text-xs font-bold truncate block">{{ post.display_name or post.name or post.userid }}</a>
                         <p class="text-[10px] text-slate-400">@{{ post.userid }}</p>

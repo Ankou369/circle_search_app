@@ -127,12 +127,13 @@ def init_db():
             activity_details TEXT,
             activity_weekdays TEXT,
             activity_start TEXT,
-            activity_end TEXT
+            activity_end TEXT,
+            logo_path TEXT
         )
     """)
     # 既存のDB（列追加前に作られたもの）に不足列を足す
     existing_cols = [row[1] for row in db.execute("PRAGMA table_info(circle_info)")]
-    for col in ("activity_weekdays", "activity_start", "activity_end"):
+    for col in ("activity_weekdays", "activity_start", "activity_end", "logo_path"):
         if col not in existing_cols:
             db.execute(f"ALTER TABLE circle_info ADD COLUMN {col} TEXT")
     # サークルの学部別人数
@@ -273,7 +274,9 @@ def get_posts(db):
     return db.execute("""
         SELECT post.*,
                (SELECT circle_name FROM circle_info
-                 WHERE circle_info.circle_id = post.userid) AS display_name
+                 WHERE circle_info.circle_id = post.userid) AS display_name,
+               (SELECT logo_path FROM circle_info
+                 WHERE circle_info.circle_id = post.userid) AS logo_path
           FROM post ORDER BY post.id DESC
     """).fetchall()
 
@@ -291,7 +294,9 @@ def get_circles(db):
                (SELECT circle_name FROM circle_info
                  WHERE circle_info.circle_id = circle_account.circle_id) AS circle_name,
                (SELECT activity_details FROM circle_info
-                 WHERE circle_info.circle_id = circle_account.circle_id) AS activity_details
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS activity_details,
+               (SELECT logo_path FROM circle_info
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS logo_path
           FROM circle_account ORDER BY circle_account.id
     """).fetchall()
 
@@ -840,6 +845,13 @@ def regist_circle_info(circle_id):
         activity_weekdays = ",".join(str(d) for d in weekdays)
         activity_start = request.form.get("activity_start") or None
         activity_end = request.form.get("activity_end") or None
+        # ロゴ画像（新しいファイルが選ばれたときだけ差し替える）
+        logo_path = None
+        logo = request.files.get("logo")
+        if logo and logo.filename:
+            logo_filename = f"{circle_id}_logo_{secure_filename(logo.filename)}"
+            logo.save(os.path.join("uploads", logo_filename))
+            logo_path = logo_filename
         existing = db.execute(
             "SELECT id FROM circle_info WHERE circle_id = ?", (circle_id,)
         ).fetchone()
@@ -865,6 +877,11 @@ def regist_circle_info(circle_id):
                 """,
                 (circle_id, circle_name, circle_time, circle_place, activity_details,
                  activity_weekdays, activity_start, activity_end),
+            )
+        if logo_path:
+            db.execute(
+                "UPDATE circle_info SET logo_path = ? WHERE circle_id = ?",
+                (logo_path, circle_id),
             )
         # 学部別部員数（circle_number_of_students）も一緒に保存する
         counts = {}

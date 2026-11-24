@@ -8,7 +8,21 @@
             <span class="font-bold text-sm">サークル情報の登録</span>
         </div>
 
-        <form method="POST" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <form method="POST" enctype="multipart/form-data" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">サークルのロゴ</label>
+                <div class="flex items-center gap-3">
+                    {% if circle_info and circle_info.logo_path %}
+                    <img src="/uploads/{{ circle_info.logo_path }}" class="w-14 h-14 rounded-2xl object-cover border border-slate-200" alt="現在のロゴ">
+                    {% else %}
+                    <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
+                    {% endif %}
+                    <div class="flex-1">
+                        <input type="file" name="logo" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:px-3 file:py-1.5 file:rounded-full file:border-0 file:bg-leader-600 file:text-white file:text-[11px] file:font-bold">
+                        <p class="text-[10px] text-slate-400 mt-1">新しい画像を選んで保存すると、ロゴが差し替わります（一覧・詳細・投稿のアイコンに表示されます）</p>
+                    </div>
+                </div>
+            </div>
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 mb-1">サークル・部活名</label>
                 <input type="text" name="circle_name" value="{{ circle_info.circle_name if circle_info else '' }}"

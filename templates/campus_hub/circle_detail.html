@@ -9,7 +9,11 @@
         </div>
 
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+            {% if circle_info and circle_info.logo_path %}
+            <img src="/uploads/{{ circle_info.logo_path }}" class="w-16 h-16 rounded-2xl object-cover border border-slate-200 mx-auto mb-2" alt="{{ circle_name }}のロゴ">
+            {% else %}
             <div class="w-16 h-16 rounded-2xl bg-brand-100 text-brand-600 mx-auto mb-2 text-2xl font-black flex items-center justify-center">{{ circle_name[:1] }}</div>
+            {% endif %}
             <h1 class="text-base font-black text-slate-800">{{ circle_name }}</h1>
             <p class="text-[10px] text-slate-500 font-mono mt-0.5">@{{ circle.circle_id }}</p>
 
