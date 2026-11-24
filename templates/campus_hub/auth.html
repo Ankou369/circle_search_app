@@ -50,7 +50,7 @@
             {% endif %}
             <div>
                 <label class="text-[11px] font-bold text-slate-500 ml-1">大学メールアドレス（ログインID）</label>
-                <input type="email" name="userid" value="{{ id_value }}" placeholder="taro@ms.nagasaki-u.ac.jp" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:bg-white transition" required>
+                <input type="email" id="student-email" name="userid" value="{{ id_value or '@ms.nagasaki-u.ac.jp' }}" placeholder="taro@ms.nagasaki-u.ac.jp" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:bg-white transition" required>
                 {% if mode == 'register' %}<p class="text-[10px] text-slate-400 mt-1 ml-1">登録すると、このアドレス宛に確認メールが届きます。メール内のリンクを開くと登録が完了します</p>{% endif %}
             </div>
             <div>
@@ -84,6 +84,21 @@
             </button>
         </form>
         {% endif %}
+
+        <script>
+        // 学生のメール欄はドメイン部分が入力済みなので、フォーカス時はカーソルを先頭（@の前）に置く
+        (function () {
+            var el = document.getElementById('student-email');
+            if (!el) return;
+            function toStart() {
+                if (el.value === '@ms.nagasaki-u.ac.jp') {
+                    setTimeout(function () { el.setSelectionRange(0, 0); }, 0);
+                }
+            }
+            el.addEventListener('focus', toStart);
+            el.addEventListener('click', toStart);
+        })();
+        </script>
 
         <div class="mt-6 text-center">
             {% if mode == 'login' %}

@@ -502,7 +502,8 @@ def signup():
     faculty = request.form.get("faculty")
     if not userid or not password:
         return render_auth("student", "register", "メールアドレスとパスワードを入力してください。", userid or "")
-    if not userid.endswith("@" + UNIVERSITY_EMAIL_DOMAIN):
+    suffix = "@" + UNIVERSITY_EMAIL_DOMAIN
+    if not userid.endswith(suffix) or len(userid) <= len(suffix):
         return render_auth(
             "student", "register",
             f"大学のメールアドレス（@{UNIVERSITY_EMAIL_DOMAIN}）を入力してください。",
