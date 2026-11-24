@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- 相性診断ホーム（説明と開始ボタン。前回結果があれば概要も出す） -->
+<div class="min-h-screen w-full flex flex-col bg-slate-50 relative z-40">
+    <div class="bg-white/90 backdrop-blur px-4 py-3 flex justify-between items-center border-b">
+        <a href="/profile" class="w-8 text-slate-400"><i class="fa-solid fa-chevron-left"></i></a>
+        <span class="font-bold text-sm">相性診断</span>
+        <div class="w-8"></div>
+    </div>
+    <div class="flex-1 p-4 max-w-md mx-auto w-full">
+        <div class="text-center mt-4 mb-6">
+            <div class="w-16 h-16 rounded-full bg-brand-50 text-brand-500 flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-black text-slate-800 mb-2">あなたに合うサークルを<br>見つけよう</h2>
+            <p class="text-xs text-slate-500 leading-relaxed">10の質問に 1〜10 で答えるだけ。<br>あなたの希望と各サークルの自己評価の近さをスコア化して、<br>相性のいい順に表示します。</p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-5">
+            <div class="space-y-3">
+                <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center shrink-0">1</span>
+                    <p class="text-xs font-bold text-slate-700">10の質問に 1〜10 で回答する</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center shrink-0">2</span>
+                    <p class="text-xs font-bold text-slate-700">全{{ diag_count }}サークルの自己評価と照合してスコア計算</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center shrink-0">3</span>
+                    <p class="text-xs font-bold text-slate-700">相性のいい順におすすめを表示</p>
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-3"><i class="fa-regular fa-clock mr-1"></i>所要時間は約1分です</p>
+        </div>
+
+        {% if latest_diag %}
+        <div class="bg-white border border-brand-200 rounded-2xl p-4 shadow-sm mb-5">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-xs font-bold text-slate-800"><i class="fa-solid fa-clock-rotate-left text-brand-500 mr-1.5"></i>前回の診断結果</h4>
+                <span class="text-[10px] text-slate-400">{{ latest_diag.created_at }}</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+                {% for r in latest_diag.results[:3] %}
+                <a href="/circle/{{ r.circle_id }}" class="flex items-center gap-2 py-2">
+                    <span class="text-[11px] font-black {% if loop.first %}text-brand-500{% else %}text-slate-400{% endif %} w-8">第{{ loop.index }}位</span>
+                    <span class="flex-1 text-xs font-bold text-slate-800">{{ r.name }}</span>
+                    <span class="text-[10px] font-bold text-slate-400">スコア {{ r.score }}</span>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
+                {% endfor %}
+            </div>
+            <a href="/diagnostic/result" class="block text-center text-[11px] font-bold text-brand-600 mt-2">前回の結果を全部見る</a>
+        </div>
+        {% endif %}
+
+        <a href="/diagnostic/questions" class="block w-full text-center bg-brand-500 text-white font-bold py-3.5 rounded-xl text-sm shadow-sm">診断を開始する</a>
+    </div>
+</div>
+{% endblock %}

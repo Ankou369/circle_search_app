@@ -3,11 +3,11 @@
 <!-- 相性診断（10問・各1〜10で回答し、サークルの自己評価との二乗差スコアで順位付け） -->
 <div class="min-h-screen w-full flex flex-col bg-slate-50 relative z-40">
     <div class="bg-white/90 backdrop-blur px-4 py-3 flex justify-between items-center border-b">
-        <a href="/profile" class="w-8 text-slate-400"><i class="fa-solid fa-chevron-left"></i></a>
+        <a href="/diagnostic" class="w-8 text-slate-400"><i class="fa-solid fa-chevron-left"></i></a>
         <span class="font-bold text-sm">相性診断</span>
         <div class="w-8"></div>
     </div>
-    <form method="POST" class="flex-1 p-4 max-w-md mx-auto w-full">
+    <form method="POST" action="/diagnostic/questions" class="flex-1 p-4 max-w-md mx-auto w-full">
         <p class="text-xs text-slate-500 mb-1">10の質問に答えると、あなたの希望とサークルの自己評価が近い順におすすめを表示します。</p>
         <p class="text-[11px] font-bold text-slate-400 mb-4">10 = とてもあてはまる　／　1 = 全くあてはまらない</p>
         {% if error %}

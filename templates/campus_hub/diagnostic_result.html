@@ -5,7 +5,7 @@
     <div class="bg-white/90 backdrop-blur px-4 py-3 flex justify-between items-center border-b">
         <a href="/diagnostic" class="w-8 text-slate-400"><i class="fa-solid fa-chevron-left"></i></a>
         <span class="font-bold text-sm">診断結果</span>
-        <div class="w-8"></div>
+        <a href="/diagnostic" class="flex items-center gap-1 bg-brand-50 text-brand-600 text-[11px] font-bold px-2.5 py-1.5 rounded-full"><i class="fa-solid fa-house"></i>診断ホーム</a>
     </div>
     <div class="flex-1 p-4 max-w-md mx-auto w-full">
         {% if results %}
@@ -33,7 +33,7 @@
         </div>
         {% endif %}
         <div class="flex gap-2 mt-6 mb-6">
-            <a href="/diagnostic" class="flex-1 text-center bg-white border border-slate-200 text-slate-600 font-bold py-3 rounded-xl text-sm">もう一度診断する</a>
+            <a href="/diagnostic/questions" class="flex-1 text-center bg-white border border-slate-200 text-slate-600 font-bold py-3 rounded-xl text-sm">もう一度診断する</a>
             <a href="/list" class="flex-1 text-center bg-brand-500 text-white font-bold py-3 rounded-xl text-sm">サークル一覧を見る</a>
         </div>
     </div>

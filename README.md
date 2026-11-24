@@ -22,13 +22,15 @@ flowchart TD
         LIST["/list サークル一覧"]
         CAL["/calendar マイカレンダー"]
         PROF["/profile マイページ"]
-        DIAG["/diagnostic 相性診断"]
+        DIAG["/diagnostic 診断ホーム"]
+        QUES["/diagnostic/questions 診断フォーム"]
         RES["/diagnostic/result 診断結果（直近1回）"]
         HOME <--> LIST
         HOME <--> CAL
         HOME <--> PROF
         HOME <--> DIAG
-        DIAG -->|診断する| RES
+        DIAG -->|診断を開始する| QUES
+        QUES -->|診断する| RES
         PROF -->|最近の結果を見る| RES
     end
     subgraph leader ["サークル幹部"]

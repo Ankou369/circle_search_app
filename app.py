@@ -537,7 +537,22 @@ def my_calendar():
     )
 
 
-@app.route("/diagnostic", methods=["GET", "POST"])
+@app.route("/diagnostic")
+@login_required
+def diagnostic_home():
+    """相性診断のホーム（説明＋前回結果）。ここから診断を開始する。"""
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    db = get_db()
+    diag_count = db.execute("SELECT COUNT(*) FROM circle_diagnostic").fetchone()[0]
+    return render_template(
+        "campus_hub/diagnostic_home.html",
+        latest_diag=latest_diagnostic(db, current_user.id),
+        diag_count=diag_count,
+    )
+
+
+@app.route("/diagnostic/questions", methods=["GET", "POST"])
 @login_required
 def diagnostic():
     if current_type() == "circle_user":
