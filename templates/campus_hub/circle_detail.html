@@ -64,7 +64,7 @@
                 <div class="bg-white p-3 px-4 rounded-2xl border border-slate-200">
                     {% if post.title %}<h3 class="text-xs font-black text-slate-800 mb-1">{{ post.title }}</h3>{% endif %}
                     <p class="text-xs text-slate-700 leading-relaxed">{{ post.comment }}</p>
-                    {% if post.image_path %}<img src="/uploads/{{ post.image_path }}" class="w-full h-48 object-cover rounded-xl mt-2">{% endif %}
+                    {% if post.image_path %}<img src="/uploads/{{ post.image_path }}" class="w-full max-h-[28rem] object-contain bg-slate-100 rounded-xl mt-2">{% endif %}
                     {% if post.userid == current_user.id %}
                     <form method="POST" action="/reset" onsubmit="return confirm('本当に削除しますか？')" class="mt-2">
                         <input type="hidden" name="post_id" value="{{ post.id }}">

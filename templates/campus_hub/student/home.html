@@ -28,7 +28,7 @@
                     {% endif %}
                 </div>
                 {% if post.image_path %}
-                <div class="w-full h-48 bg-slate-100"><img src="/uploads/{{ post.image_path }}" class="w-full h-full object-cover"></div>
+                <div class="w-full bg-slate-100"><img src="/uploads/{{ post.image_path }}" class="w-full max-h-[28rem] object-contain mx-auto"></div>
                 {% endif %}
                 <div class="p-4">
                     {% if post.title %}<h3 class="text-sm font-bold mb-1">{{ post.title }}</h3>{% endif %}
