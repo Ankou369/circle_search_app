@@ -14,6 +14,8 @@ campus_hub.db に、DATA の各サークルについて
 ただし circle_info / circle_diagnostic が未登録なら、データがある分だけ補完する。
 
 DATA が第1弾（運動系48）、DATA2 が第2弾（文科系39）。
+分類（circle_info.category）は DATA を "sports"（運動系）、DATA2 を "culture"（文化系）
+として登録し、既存サークルで未設定なら再実行時に補完する。
 （P.M.C と エコマジック の質問10は、最初のスクリーンショットでは空欄だったが、
 2026-11-20 に送られた見出し付きの表で値が確認できたため登録済み。）
 """
@@ -151,7 +153,7 @@ def main():
     diag_cols = ", ".join(f"q{i}" for i in range(1, 11))
     diag_ph = ", ".join("?" for _ in range(10))
 
-    def register(username, name, time_str, details, weekdays, scores):
+    def register(username, name, time_str, details, weekdays, scores, category):
         exists = db.execute(
             "SELECT id FROM circle_account WHERE circle_id = ?", (username,)
         ).fetchone()
@@ -172,11 +174,21 @@ def main():
             db.execute(
                 "INSERT INTO circle_info (circle_id, circle_name, circle_time,"
                 " circle_place, activity_details, activity_weekdays,"
-                " activity_start, activity_end) VALUES (?, ?, ?, '', ?, ?, '', '')",
-                (username, name, time_str, details, weekdays),
+                " activity_start, activity_end, category)"
+                " VALUES (?, ?, ?, '', ?, ?, '', '', ?)",
+                (username, name, time_str, details, weekdays, category),
             )
             if exists:
                 backfilled.append(f"{username}(info)")
+        else:
+            # 既存の circle_info で分類だけ未設定なら補完する（一覧の運動系/文化系用）
+            cur = db.execute(
+                "UPDATE circle_info SET category = ? WHERE circle_id = ?"
+                " AND (category IS NULL OR category = '')",
+                (category, username),
+            )
+            if cur.rowcount and exists:
+                backfilled.append(f"{username}(分類)")
         # 診断プロフィールが無く、10問そろっていれば作る
         if scores and all(s is not None for s in scores):
             diag = db.execute(
@@ -192,9 +204,9 @@ def main():
                     backfilled.append(f"{username}(診断)")
 
     for username, name, days, scores in DATA:
-        register(username, name, time_text(days), "", "", scores)
+        register(username, name, time_text(days), "", "", scores, "sports")
     for username, name, time_str, details, weekdays, scores in DATA2:
-        register(username, name, time_str, details, weekdays, scores)
+        register(username, name, time_str, details, weekdays, scores, "culture")
     db.commit()
     db.close()
 

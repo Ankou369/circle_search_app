@@ -1,30 +1,37 @@
 {% extends "base.html" %}
 {% block content %}
-<!-- 相性診断（10問・各1〜10で回答し、サークルの自己評価との二乗差スコアで順位付け） -->
+<!-- 相性診断（1問ずつ表示・進捗バーつき。回答はセッションに保存され、最後に結果を表示） -->
 <div class="min-h-screen w-full flex flex-col bg-slate-50 relative z-40">
     <div class="bg-slate-950/95 backdrop-blur px-4 py-3 flex justify-between items-center border-b border-slate-800 text-white">
         <a href="/diagnostic" class="w-8 text-slate-300"><i class="fa-solid fa-chevron-left"></i></a>
         <span class="font-bold text-sm">相性診断</span>
         <div class="w-8"></div>
     </div>
-    <form method="POST" action="/diagnostic/questions" class="flex-1 p-4 max-w-md mx-auto w-full">
-        <p class="text-xs text-slate-500 mb-1">10の質問に答えると、あなたの希望とサークルの自己評価が近い順におすすめを表示します。</p>
-        <p class="text-[11px] font-bold text-slate-400 mb-4">10 = とてもあてはまる　／　1 = 全くあてはまらない</p>
+    <div class="flex-1 p-4 max-w-md mx-auto w-full">
+        <div class="mb-5">
+            <div class="flex justify-between items-center mb-1.5">
+                <span class="text-[11px] font-black text-slate-600">質問 {{ step }} / {{ total }}</span>
+                <span class="text-[11px] font-bold text-slate-400">{% if step < total %}あと {{ total - step }} 問{% else %}最後の質問です{% endif %}</span>
+            </div>
+            <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full bg-brand-500 rounded-full transition-all duration-300" style="width: {{ percent }}%"></div>
+            </div>
+        </div>
         {% if error %}
         <div class="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl px-3 py-2 mb-4">{{ error }}</div>
         {% endif %}
-        <div class="space-y-4">
-            {% for key, label, student_q, circle_q in questions %}
+        <form method="POST" action="/diagnostic/questions">
+            <input type="hidden" name="step" value="{{ step }}">
             <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="text-[10px] font-black bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full">Q{{ loop.index }}</span>
+                    <span class="text-[10px] font-black bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full">Q{{ step }}</span>
                     <span class="text-[10px] font-bold text-slate-400">{{ label }}</span>
                 </div>
                 <p class="text-sm font-bold text-slate-800 mb-3">{{ student_q }}</p>
                 <div class="flex flex-wrap gap-1.5">
                     {% for v in range(1, 11) %}
                     <label class="cursor-pointer">
-                        <input type="radio" name="{{ key }}" value="{{ v }}" required class="peer sr-only" {% if answers.get(key) == v|string %}checked{% endif %}>
+                        <input type="radio" name="{{ key }}" value="{{ v }}" required class="peer sr-only" {% if answer == v %}checked{% endif %}>
                         <span class="inline-block w-8 text-center px-0 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 peer-checked:bg-brand-500 peer-checked:text-white peer-checked:border-brand-500">{{ v }}</span>
                     </label>
                     {% endfor %}
@@ -34,9 +41,11 @@
                     <span>10：とてもあてはまる</span>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-        <button type="submit" class="w-full bg-brand-500 text-white font-bold py-3 rounded-xl text-sm mt-5 mb-6">診断する</button>
-    </form>
+            <button type="submit" class="w-full bg-brand-500 text-white font-bold py-3 rounded-xl text-sm mt-5">{% if step < total %}次の質問へ{% else %}診断する{% endif %}</button>
+            {% if step > 1 %}
+            <a href="/diagnostic/questions?step={{ step - 1 }}" class="block text-center text-xs font-bold text-slate-400 mt-3">前の質問に戻る</a>
+            {% endif %}
+        </form>
+    </div>
 </div>
 {% endblock %}

@@ -23,7 +23,7 @@ flowchart TD
         CAL["/calendar マイカレンダー"]
         PROF["/profile マイページ"]
         DIAG["/diagnostic 診断ホーム"]
-        QUES["/diagnostic/questions 診断フォーム"]
+        QUES["/diagnostic/questions 診断（1問ずつ回答）"]
         RES["/diagnostic/result 診断結果（直近1回）"]
         HOME <--> LIST
         HOME <--> CAL
@@ -35,13 +35,16 @@ flowchart TD
     end
     subgraph leader ["サークル幹部"]
         DASH["/leader ダッシュボード"]
+        LFEED["/leader/home ホーム（フィード＋新歓投稿）"]
         FOL["/leader/followers フォロワー一覧"]
         SET["/leader/settings 設定"]
         DASH <--> SET
+        DASH <--> LFEED
         DASH --> FOL
         FOL --> DASH
     end
     DET["/circle/サークル詳細"]
+    PDET["/post/投稿詳細（コメント）"]
     REG["/regist_circle_info 情報登録・編集"]
     L -->|学生ログイン成功| HOME
     SU -->|登録後| L
@@ -49,6 +52,10 @@ flowchart TD
     CS -->|登録後| CL
     LIST --> DET
     HOME --> DET
+    HOME --> PDET
+    DET --> PDET
+    LFEED --> DET
+    LFEED --> PDET
     DASH --> REG
     SET --> REG
     DET -->|自分のサークルの場合| REG

@@ -5,7 +5,7 @@ from calendar import monthcalendar
 from datetime import date, datetime
 
 from flask import (Flask, flash, g, redirect, render_template, request,
-                   send_from_directory, url_for)
+                   send_from_directory, session, url_for)
 from flask_login import (LoginManager, UserMixin, current_user, login_required,
                          login_user, logout_user)
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -30,6 +30,9 @@ FACULTIES = [
 
 # 活動曜日（Python の date.weekday() と同じ番号: 月=0 〜 日=6）
 WEEKDAYS = [(0, "月"), (1, "火"), (2, "水"), (3, "木"), (4, "金"), (5, "土"), (6, "日")]
+
+# サークルの分類（一覧の絞り込み用。circle_info.category に保存する）
+CATEGORIES = [("sports", "運動系"), ("culture", "文化系")]
 
 # 相性診断の質問項目（キーは circle_diagnostic の列名 q1〜q10 と対応）
 # (キー, 観点ラベル, 学生への質問文, サークル側の自己評価文)
@@ -128,12 +131,13 @@ def init_db():
             activity_weekdays TEXT,
             activity_start TEXT,
             activity_end TEXT,
-            logo_path TEXT
+            logo_path TEXT,
+            category TEXT
         )
     """)
     # 既存のDB（列追加前に作られたもの）に不足列を足す
     existing_cols = [row[1] for row in db.execute("PRAGMA table_info(circle_info)")]
-    for col in ("activity_weekdays", "activity_start", "activity_end", "logo_path"):
+    for col in ("activity_weekdays", "activity_start", "activity_end", "logo_path", "category"):
         if col not in existing_cols:
             db.execute(f"ALTER TABLE circle_info ADD COLUMN {col} TEXT")
     # サークルの学部別人数
@@ -171,6 +175,25 @@ def init_db():
             user_id TEXT NOT NULL,
             answers TEXT,
             results TEXT,
+            created_at TEXT
+        )
+    """)
+    # 投稿へのいいね（1人1投稿につき1回まで）
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS post_like (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            UNIQUE (post_id, user_id)
+        )
+    """)
+    # 投稿へのコメント
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS post_comment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            body TEXT NOT NULL,
             created_at TEXT
         )
     """)
@@ -270,15 +293,50 @@ def latest_diagnostic(db, user_id):
     return {"created_at": row["created_at"], "results": results}
 
 
-def get_posts(db):
-    return db.execute("""
+def get_posts(db, user_id=None, circle_id=None):
+    """投稿一覧（表示名・ロゴ・いいね数・コメント数・自分のいいね有無つき）。
+
+    circle_id を渡すとそのサークルの投稿だけを返す。
+    """
+    sql = """
         SELECT post.*,
                (SELECT circle_name FROM circle_info
                  WHERE circle_info.circle_id = post.userid) AS display_name,
                (SELECT logo_path FROM circle_info
-                 WHERE circle_info.circle_id = post.userid) AS logo_path
-          FROM post ORDER BY post.id DESC
-    """).fetchall()
+                 WHERE circle_info.circle_id = post.userid) AS logo_path,
+               (SELECT COUNT(*) FROM post_like
+                 WHERE post_like.post_id = post.id) AS like_count,
+               (SELECT COUNT(*) FROM post_comment
+                 WHERE post_comment.post_id = post.id) AS comment_count,
+               EXISTS(SELECT 1 FROM post_like
+                 WHERE post_like.post_id = post.id
+                   AND post_like.user_id = ?) AS liked
+          FROM post
+    """
+    params = [user_id or ""]
+    if circle_id is not None:
+        sql += " WHERE post.userid = ?"
+        params.append(circle_id)
+    sql += " ORDER BY post.id DESC"
+    return db.execute(sql, params).fetchall()
+
+
+def get_post_comments(db, post_id):
+    """投稿へのコメント（投稿者の表示名とロゴつき、古い順）。"""
+    return db.execute("""
+        SELECT post_comment.*,
+               COALESCE(
+                   (SELECT name FROM user WHERE user.userid = post_comment.user_id),
+                   (SELECT circle_name FROM circle_info
+                     WHERE circle_info.circle_id = post_comment.user_id),
+                   post_comment.user_id
+               ) AS display_name,
+               (SELECT logo_path FROM circle_info
+                 WHERE circle_info.circle_id = post_comment.user_id) AS logo_path
+          FROM post_comment
+         WHERE post_comment.post_id = ?
+         ORDER BY post_comment.id
+    """, (post_id,)).fetchall()
 
 
 def get_follow_list(db, user_id):
@@ -296,7 +354,9 @@ def get_circles(db):
                (SELECT activity_details FROM circle_info
                  WHERE circle_info.circle_id = circle_account.circle_id) AS activity_details,
                (SELECT logo_path FROM circle_info
-                 WHERE circle_info.circle_id = circle_account.circle_id) AS logo_path
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS logo_path,
+               (SELECT category FROM circle_info
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS category
           FROM circle_account ORDER BY circle_account.id
     """).fetchall()
 
@@ -412,30 +472,47 @@ def logout():
 
 ### 学生の画面 ################################
 
-@app.route("/")
-def index():
-    if not current_user.is_authenticated:
-        return redirect("/login")
-    if current_type() == "circle_user":
-        return redirect("/leader")
+def render_feed(nav, active, can_post=False):
+    """ホームのフィード（学生用／サークル用で共用。タブでフォロー中・その他を絞る）。"""
     db = get_db()
     tab = request.args.get("tab", "all")
     if tab not in ("all", "following", "others"):
         tab = "all"
     follow_list = get_follow_list(db, current_user.id)
-    posts = get_posts(db)
+    posts = get_posts(db, current_user.id)
     if tab == "following":
         posts = [p for p in posts if p["userid"] in follow_list]
     elif tab == "others":
         posts = [p for p in posts if p["userid"] not in follow_list]
     return render_template(
         "campus_hub/student/home.html",
-        nav="student",
-        active="home",
+        nav=nav,
+        active=active,
         posts=posts,
         follow_list=follow_list,
         tab=tab,
+        can_post=can_post,
+        feed_base="/" if nav == "student" else "/leader/home",
+        leader_circle_name=circle_display_name(db, current_user.id) if can_post else "",
     )
+
+
+@app.route("/")
+def index():
+    if not current_user.is_authenticated:
+        return redirect("/login")
+    if current_type() == "circle_user":
+        return redirect("/leader")
+    return render_feed("student", "home")
+
+
+@app.route("/leader/home")
+@login_required
+def leader_feed():
+    """サークル側のホーム（学生と同じフィード＋上部の新歓投稿フォーム）。"""
+    if current_type() != "circle_user":
+        return redirect("/")
+    return render_feed("leader", "leader-feed", can_post=True)
 
 
 @app.route("/campus-hub")
@@ -449,11 +526,19 @@ def circle_list_page():
     if current_type() == "circle_user":
         return redirect("/leader")
     db = get_db()
+    cat = request.args.get("cat", "all")
+    if cat not in ("all", "sports", "culture"):
+        cat = "all"
+    circles = get_circles(db)
+    if cat != "all":
+        circles = [c for c in circles if c["category"] == cat]
     return render_template(
         "campus_hub/student/list.html",
         nav="student",
         active="list",
-        circles=get_circles(db),
+        circles=circles,
+        cat=cat,
+        categories=dict(CATEGORIES),
     )
 
 
@@ -572,29 +657,53 @@ def diagnostic_home():
 @app.route("/diagnostic/questions", methods=["GET", "POST"])
 @login_required
 def diagnostic():
+    """相性診断（1問ずつ表示し、回答はセッションに貯めて最後に結果を出す）。"""
     if current_type() == "circle_user":
         return redirect("/leader")
+    total = len(DIAGNOSTIC_QUESTIONS)
+    keys = [key for key, _l, _s, _c in DIAGNOSTIC_QUESTIONS]
+
+    def render_step(step, error=None):
+        key, label, student_q, _circle_q = DIAGNOSTIC_QUESTIONS[step - 1]
+        saved = session.get("diag_answers", {})
+        return render_template(
+            "campus_hub/diagnostic.html",
+            step=step,
+            total=total,
+            percent=round(step / total * 100),
+            key=key,
+            label=label,
+            student_q=student_q,
+            answer=saved.get(key),
+            error=error,
+        )
+
     if request.method == "POST":
-        answers = []
-        raw_answers = {}
-        valid = True
-        for key, _label, _student_q, _circle_q in DIAGNOSTIC_QUESTIONS:
-            raw = request.form.get(key)
-            raw_answers[key] = raw
-            try:
-                value = int(raw)
-                if not 1 <= value <= 10:
-                    raise ValueError
-                answers.append(value)
-            except (TypeError, ValueError):
-                valid = False
-        if not valid:
-            return render_template(
-                "campus_hub/diagnostic.html",
-                questions=DIAGNOSTIC_QUESTIONS,
-                answers=raw_answers,
-                error="すべての質問に 1〜10 で答えてください。",
-            )
+        try:
+            step = int(request.form.get("step", "1"))
+        except ValueError:
+            step = 1
+        if not 1 <= step <= total:
+            step = 1
+        key = keys[step - 1]
+        raw = request.form.get(key)
+        try:
+            value = int(raw)
+            if not 1 <= value <= 10:
+                raise ValueError
+        except (TypeError, ValueError):
+            return render_step(step, error="1〜10 のいずれかを選んでください。")
+        saved = dict(session.get("diag_answers", {}))
+        saved[key] = value
+        session["diag_answers"] = saved
+        if step < total:
+            return redirect(f"/diagnostic/questions?step={step + 1}")
+        # 最終問題: 10問そろっていなければ、最初の未回答へ戻す
+        missing = [i + 1 for i, k in enumerate(keys) if k not in saved]
+        if missing:
+            return redirect(f"/diagnostic/questions?step={missing[0]}")
+        answers = [saved[k] for k in keys]
+        session.pop("diag_answers", None)
         db = get_db()
         results = []
         for row in db.execute("SELECT * FROM circle_diagnostic").fetchall():
@@ -630,12 +739,19 @@ def diagnostic():
             results=results,
             answers=answers,
         )
-    return render_template(
-        "campus_hub/diagnostic.html",
-        questions=DIAGNOSTIC_QUESTIONS,
-        answers={},
-        error=None,
-    )
+
+    # GET: step 指定がなければ最初から（前回の途中回答は破棄する）
+    step_param = request.args.get("step")
+    if step_param is None:
+        session.pop("diag_answers", None)
+        return redirect("/diagnostic/questions?step=1")
+    try:
+        step = int(step_param)
+    except ValueError:
+        step = 1
+    if not 1 <= step <= total:
+        step = 1
+    return render_step(step)
 
 
 @app.route("/diagnostic/result")
@@ -736,7 +852,7 @@ def post():
         (current_user.id, name, title, comment, image_path),
     )
     db.commit()
-    return redirect("/leader")
+    return redirect(request.referrer or "/leader")
 
 
 @app.route("/reset", methods=["POST"])
@@ -744,11 +860,92 @@ def post():
 def reset():
     post_id = request.form["post_id"]
     db = get_db()
-    db.execute(
+    cur = db.execute(
         "DELETE FROM post WHERE id = ? AND userid = ?", (post_id, current_user.id)
     )
+    if cur.rowcount:
+        # 投稿を消したら、その投稿へのいいね・コメントも一緒に消す
+        db.execute("DELETE FROM post_like WHERE post_id = ?", (post_id,))
+        db.execute("DELETE FROM post_comment WHERE post_id = ?", (post_id,))
     db.commit()
     return redirect(request.referrer or "/")
+
+
+@app.route("/like", methods=["POST"])
+@login_required
+def like_post():
+    """投稿へのいいね（押すたびに付ける／外すを切り替える）。"""
+    post_id = request.form.get("post_id")
+    db = get_db()
+    if db.execute("SELECT id FROM post WHERE id = ?", (post_id,)).fetchone():
+        existing = db.execute(
+            "SELECT id FROM post_like WHERE post_id = ? AND user_id = ?",
+            (post_id, current_user.id),
+        ).fetchone()
+        if existing:
+            db.execute(
+                "DELETE FROM post_like WHERE post_id = ? AND user_id = ?",
+                (post_id, current_user.id),
+            )
+        else:
+            db.execute(
+                "INSERT INTO post_like (post_id, user_id) VALUES (?, ?)",
+                (post_id, current_user.id),
+            )
+        db.commit()
+    return redirect(request.referrer or "/")
+
+
+@app.route("/post/<int:post_id>")
+@login_required
+def post_detail(post_id):
+    """投稿の詳細（コメント一覧とコメント投稿フォーム）。"""
+    db = get_db()
+    posts = get_posts(db, current_user.id)
+    post = next((p for p in posts if p["id"] == post_id), None)
+    if post is None:
+        return redirect("/")
+    if current_type() == "circle_user":
+        back_url = f"/circle/{post['userid']}"
+    else:
+        back_url = "/"
+    return render_template(
+        "campus_hub/post_detail.html",
+        post=post,
+        comments=get_post_comments(db, post_id),
+        back_url=back_url,
+        follow_list=get_follow_list(db, current_user.id),
+    )
+
+
+@app.route("/post/<int:post_id>/comment", methods=["POST"])
+@login_required
+def add_comment(post_id):
+    body = (request.form.get("body") or "").strip()
+    db = get_db()
+    if body and db.execute("SELECT id FROM post WHERE id = ?", (post_id,)).fetchone():
+        db.execute(
+            "INSERT INTO post_comment (post_id, user_id, body, created_at)"
+            " VALUES (?, ?, ?, ?)",
+            (post_id, current_user.id, body, datetime.now().strftime("%Y-%m-%d %H:%M")),
+        )
+        db.commit()
+    return redirect(f"/post/{post_id}")
+
+
+@app.route("/comment/<int:comment_id>/delete", methods=["POST"])
+@login_required
+def delete_comment(comment_id):
+    db = get_db()
+    row = db.execute(
+        "SELECT post_id FROM post_comment WHERE id = ? AND user_id = ?",
+        (comment_id, current_user.id),
+    ).fetchone()
+    if row:
+        db.execute("DELETE FROM post_comment WHERE id = ?", (comment_id,))
+        db.commit()
+        return redirect(f"/post/{row['post_id']}")
+    return redirect("/")
 
 
 @app.route("/uploads/<filename>")
@@ -799,9 +996,7 @@ def circle_account(circle_id):
     ).fetchone()
     if circle is None:
         return redirect("/")
-    posts = db.execute(
-        "SELECT * FROM post WHERE userid = ? ORDER BY id DESC", (circle_id,)
-    ).fetchall()
+    posts = get_posts(db, current_user.id, circle_id=circle_id)
     follower = db.execute(
         "SELECT COUNT(*) FROM follow_table WHERE follow_id = ?", (circle_id,)
     ).fetchone()[0]
@@ -849,6 +1044,9 @@ def regist_circle_info(circle_id):
     db = get_db()
     if request.method == "POST":
         circle_name = request.form.get("circle_name")
+        category = request.form.get("category")
+        if category not in ("sports", "culture"):
+            category = None
         circle_time = request.form.get("circle_time")
         circle_place = request.form.get("circle_place")
         activity_details = request.form.get("activity_details")
@@ -873,22 +1071,22 @@ def regist_circle_info(circle_id):
                 UPDATE circle_info
                    SET circle_name = ?, circle_time = ?, circle_place = ?,
                        activity_details = ?, activity_weekdays = ?,
-                       activity_start = ?, activity_end = ?
+                       activity_start = ?, activity_end = ?, category = ?
                  WHERE circle_id = ?
                 """,
                 (circle_name, circle_time, circle_place, activity_details,
-                 activity_weekdays, activity_start, activity_end, circle_id),
+                 activity_weekdays, activity_start, activity_end, category, circle_id),
             )
         else:
             db.execute(
                 """
                 INSERT INTO circle_info
                     (circle_id, circle_name, circle_time, circle_place, activity_details,
-                     activity_weekdays, activity_start, activity_end)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     activity_weekdays, activity_start, activity_end, category)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (circle_id, circle_name, circle_time, circle_place, activity_details,
-                 activity_weekdays, activity_start, activity_end),
+                 activity_weekdays, activity_start, activity_end, category),
             )
         if logo_path:
             db.execute(
@@ -972,6 +1170,7 @@ def regist_circle_info(circle_id):
         "campus_hub/regist_circle_info.html",
         circle_id=circle_id,
         circle_info=circle_info,
+        categories=CATEGORIES,
         faculties=FACULTIES,
         students_row=students_row,
         weekdays=WEEKDAYS,

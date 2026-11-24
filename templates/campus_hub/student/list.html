@@ -9,6 +9,11 @@
         </div>
     </div>
     <div class="flex-1 p-3 space-y-2 pb-24">
+        <div class="flex gap-2 pb-1">
+            <a href="/list?cat=all" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if cat == 'all' else 'bg-white border border-slate-200 text-slate-500' }}">すべて</a>
+            <a href="/list?cat=sports" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if cat == 'sports' else 'bg-white border border-slate-200 text-slate-500' }}">運動系</a>
+            <a href="/list?cat=culture" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if cat == 'culture' else 'bg-white border border-slate-200 text-slate-500' }}">文化系</a>
+        </div>
         {% if circles %}
             {% for circle in circles %}
             <a href="/circle/{{ circle.circle_id }}" class="circle-card bg-white p-3 rounded-xl border border-slate-200 flex gap-3 items-center shadow-sm" data-name="{{ ((circle.circle_name or circle.circle_id) ~ ' ' ~ (circle.activity_details or ''))|lower }}">
@@ -21,12 +26,21 @@
                     <h5 class="text-xs font-bold truncate">{{ circle.circle_name or circle.circle_id }}</h5>
                     <p class="text-[10px] text-slate-500 truncate">@{{ circle.circle_id }}</p>
                 </div>
+                {% if circle.category %}
+                <span class="text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 {{ 'bg-orange-50 text-orange-500' if circle.category == 'sports' else 'bg-violet-50 text-violet-500' }}">{{ categories[circle.category] }}</span>
+                {% endif %}
                 <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
             </a>
             {% endfor %}
             <p id="circle-search-empty" class="hidden text-center text-xs font-bold text-slate-400 py-10">条件に合うサークルが見つかりませんでした</p>
         {% else %}
+            {% if cat == 'sports' %}
+            <p class="text-center text-xs font-bold text-slate-400 py-10">運動系のサークルはまだありません</p>
+            {% elif cat == 'culture' %}
+            <p class="text-center text-xs font-bold text-slate-400 py-10">文化系のサークルはまだありません</p>
+            {% else %}
             <p class="text-center text-xs font-bold text-slate-400 py-10">登録されているサークルはまだありません</p>
+            {% endif %}
         {% endif %}
     </div>
 </div>

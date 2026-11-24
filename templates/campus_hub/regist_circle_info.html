@@ -29,6 +29,15 @@
                        class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
             </div>
             <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">分類（一覧の絞り込み用）</label>
+                <select name="category" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                    <option value="" {% if not circle_info or not circle_info.category %}selected{% endif %}>未設定</option>
+                    {% for value, label in categories %}
+                    <option value="{{ value }}" {% if circle_info and circle_info.category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
                 <label class="block text-[10px] font-bold text-slate-500 mb-1">活動時間</label>
                 <input type="text" name="circle_time" value="{{ circle_info.circle_time if circle_info else '' }}" placeholder="例: 毎週火・金 18:00〜20:00"
                        class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">

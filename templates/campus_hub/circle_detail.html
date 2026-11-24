@@ -72,12 +72,19 @@
                     {% if post.title %}<h3 class="text-xs font-black text-slate-800 mb-1">{{ post.title }}</h3>{% endif %}
                     <p class="text-xs text-slate-700 leading-relaxed">{{ post.comment }}</p>
                     {% if post.image_path %}<img src="/uploads/{{ post.image_path }}" class="w-full max-h-[28rem] object-contain bg-slate-100 rounded-xl mt-2">{% endif %}
-                    {% if post.userid == current_user.id %}
-                    <form method="POST" action="/reset" onsubmit="return confirm('本当に削除しますか？')" class="mt-2">
-                        <input type="hidden" name="post_id" value="{{ post.id }}">
-                        <button type="submit" class="text-[10px] font-bold text-red-400">削除</button>
-                    </form>
-                    {% endif %}
+                    <div class="flex items-center gap-5 mt-2 text-slate-400">
+                        <form action="/like" method="POST" class="m-0">
+                            <input type="hidden" name="post_id" value="{{ post.id }}">
+                            <button type="submit" class="flex items-center gap-1.5 transition {{ 'text-red-500' if post.liked else 'hover:text-red-400' }}"><i class="{{ 'fa-solid' if post.liked else 'fa-regular' }} fa-heart"></i><span class="text-[11px] font-medium">{{ post.like_count }}</span></button>
+                        </form>
+                        <a href="/post/{{ post.id }}" class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-comment"></i><span class="text-[11px] font-medium">{{ post.comment_count }}</span></a>
+                        {% if post.userid == current_user.id %}
+                        <form method="POST" action="/reset" onsubmit="return confirm('本当に削除しますか？')" class="m-0 ml-auto">
+                            <input type="hidden" name="post_id" value="{{ post.id }}">
+                            <button type="submit" class="text-[10px] font-bold text-red-400">削除</button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
             {% else %}
                 <p class="text-xs text-slate-400 text-center pt-4">まだ投稿がありません</p>

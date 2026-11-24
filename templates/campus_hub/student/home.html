@@ -7,10 +7,29 @@
         <span class="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center"><i class="fa-regular fa-bell text-slate-100"></i></span>
     </div>
     <div class="flex-1 p-4 space-y-4 pb-24">
+        {% if can_post %}
+        <form id="post-form" action="/post" method="POST" enctype="multipart/form-data" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+            <h3 class="text-xs font-black"><i class="fa-solid fa-pen mr-1.5 text-leader-600"></i>新歓情報を投稿</h3>
+            <input type="hidden" name="name" value="{{ leader_circle_name }}">
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">タイトル</label>
+                <input type="text" name="title" placeholder="新入生歓迎会のお知らせ" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-leader-500 focus:bg-white transition">
+            </div>
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">内容</label>
+                <textarea name="comment" rows="3" placeholder="活動内容や新歓の詳細を書いてください" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-leader-500 focus:bg-white transition" required></textarea>
+            </div>
+            <div>
+                <label class="text-[11px] font-bold text-slate-500 ml-1">画像（任意）</label>
+                <input type="file" name="image" accept="image/*" class="w-full mt-1 text-xs text-slate-500">
+            </div>
+            <button type="submit" class="w-full bg-slate-900 text-white font-bold text-sm py-3 rounded-xl shadow-lg active:scale-95 transition">投稿する</button>
+        </form>
+        {% endif %}
         <div class="flex gap-2">
-            <a href="/?tab=all" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'all' else 'bg-white border border-slate-200 text-slate-500' }}">すべて</a>
-            <a href="/?tab=following" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'following' else 'bg-white border border-slate-200 text-slate-500' }}">フォロー中</a>
-            <a href="/?tab=others" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'others' else 'bg-white border border-slate-200 text-slate-500' }}">その他</a>
+            <a href="{{ feed_base }}?tab=all" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'all' else 'bg-white border border-slate-200 text-slate-500' }}">すべて</a>
+            <a href="{{ feed_base }}?tab=following" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'following' else 'bg-white border border-slate-200 text-slate-500' }}">フォロー中</a>
+            <a href="{{ feed_base }}?tab=others" class="px-4 py-1.5 rounded-full text-xs font-bold {{ 'bg-slate-900 text-white' if tab == 'others' else 'bg-white border border-slate-200 text-slate-500' }}">その他</a>
         </div>
         {% if posts %}
             {% for post in posts %}
@@ -43,8 +62,11 @@
                     {% if post.title %}<h3 class="text-sm font-bold mb-1">{{ post.title }}</h3>{% endif %}
                     <p class="text-xs text-slate-600 leading-relaxed">{{ post.comment }}</p>
                     <div class="flex items-center gap-5 mt-3 text-slate-400">
-                        <button onclick="toggleGood(this)" class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-thumbs-up text-lg"></i><span class="text-xs font-medium count">0</span></button>
-                        <button class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-comment text-lg"></i><span class="text-xs font-medium">0</span></button>
+                        <form action="/like" method="POST" class="m-0">
+                            <input type="hidden" name="post_id" value="{{ post.id }}">
+                            <button type="submit" class="flex items-center gap-1.5 transition {{ 'text-red-500' if post.liked else 'hover:text-red-400' }}"><i class="{{ 'fa-solid' if post.liked else 'fa-regular' }} fa-heart text-lg"></i><span class="text-xs font-medium">{{ post.like_count }}</span></button>
+                        </form>
+                        <a href="/post/{{ post.id }}" class="flex items-center gap-1.5 hover:text-brand-600 transition"><i class="fa-regular fa-comment text-lg"></i><span class="text-xs font-medium">{{ post.comment_count }}</span></a>
                         {% if current_user.id == post.userid %}
                         <form action="/reset" method="POST" class="m-0 ml-auto" onsubmit="return confirm('この投稿を削除しますか？')">
                             <input type="hidden" name="post_id" value="{{ post.id }}">
