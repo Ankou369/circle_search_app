@@ -1090,8 +1090,9 @@ def post_detail(post_id):
     post = next((p for p in posts if p["id"] == post_id), None)
     if post is None:
         return redirect("/")
+    # 戻るボタンは常に自分のホーム（フィード）へ戻る
     if current_type() == "circle_user":
-        back_url = f"/circle/{post['userid']}"
+        back_url = "/leader/home"
     else:
         back_url = "/"
     return render_template(
