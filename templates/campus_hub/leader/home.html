@@ -17,7 +17,7 @@
             <h3 class="text-xs font-black mb-2">クイックアクション</h3>
             <div class="space-y-2">
                 <a href="#post-form" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
-                    <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-leader-50 text-leader-600 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></div><span class="text-xs font-bold">新歓情報を投稿する</span></div>
+                    <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-leader-50 text-leader-600 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></div><span class="text-xs font-bold">活動情報を登録する</span></div>
                     <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
                 </a>
                 <a href="/leader/followers" class="w-full bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition shadow-sm">
@@ -40,7 +40,7 @@
         </div>
 
         <form id="post-form" action="/post" method="POST" enctype="multipart/form-data" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-            <h3 class="text-xs font-black"><i class="fa-solid fa-pen mr-1.5 text-leader-600"></i>新歓情報を投稿</h3>
+            <h3 class="text-xs font-black"><i class="fa-solid fa-pen mr-1.5 text-leader-600"></i>活動情報を投稿</h3>
             <input type="hidden" name="name" value="{{ leader_circle_name }}">
             <div>
                 <label class="text-[11px] font-bold text-slate-500 ml-1">タイトル</label>
