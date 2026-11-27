@@ -104,7 +104,8 @@ def init_db():
             userid TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             name TEXT,
-            faculty TEXT
+            faculty TEXT,
+            icon_path TEXT
         )
     """)
     # サークルアカウント
@@ -155,6 +156,10 @@ def init_db():
     for col in ("activity_weekdays", "activity_start", "activity_end", "logo_path", "category"):
         if col not in existing_cols:
             db.execute(f"ALTER TABLE circle_info ADD COLUMN {col} TEXT")
+    # 既存のDBの user テーブルにも学生アイコン用の列を足す
+    user_cols = [row[1] for row in db.execute("PRAGMA table_info(user)")]
+    if "icon_path" not in user_cols:
+        db.execute("ALTER TABLE user ADD COLUMN icon_path TEXT")
     # サークルの学部別人数
     db.execute("""
         CREATE TABLE IF NOT EXISTS circle_number_of_students (
@@ -380,8 +385,12 @@ def get_post_comments(db, post_id):
                      WHERE circle_info.circle_id = post_comment.user_id),
                    post_comment.user_id
                ) AS display_name,
-               (SELECT logo_path FROM circle_info
-                 WHERE circle_info.circle_id = post_comment.user_id) AS logo_path
+               COALESCE(
+                   (SELECT logo_path FROM circle_info
+                     WHERE circle_info.circle_id = post_comment.user_id),
+                   (SELECT icon_path FROM user
+                     WHERE user.userid = post_comment.user_id)
+               ) AS logo_path
           FROM post_comment
          WHERE post_comment.post_id = ?
          ORDER BY post_comment.id
@@ -423,10 +432,11 @@ def chat_partner_info(db, room, user_id):
         return {"id": partner_id, "name": name, "logo_path": logo}
     partner_id = room["student_id"]
     row = db.execute(
-        "SELECT name FROM user WHERE userid = ?", (partner_id,)
+        "SELECT name, icon_path FROM user WHERE userid = ?", (partner_id,)
     ).fetchone()
     name = row["name"] if row and row["name"] else partner_id
-    return {"id": partner_id, "name": name, "logo_path": None}
+    logo = row["icon_path"] if row else None
+    return {"id": partner_id, "name": name, "logo_path": logo}
 
 
 def get_follow_list(db, user_id):
@@ -720,7 +730,7 @@ def profile():
         return redirect("/leader")
     db = get_db()
     student_info = db.execute(
-        "SELECT name, faculty FROM user WHERE userid = ?", (current_user.id,)
+        "SELECT name, faculty, icon_path FROM user WHERE userid = ?", (current_user.id,)
     ).fetchone()
     following_circles = []
     for circle_id in get_follow_list(db, current_user.id):
@@ -743,6 +753,28 @@ def profile():
         latest_diag=latest_diagnostic(db, current_user.id),
         following_circles=following_circles,
     )
+
+
+@app.route("/profile/icon", methods=["POST"])
+@login_required
+def profile_icon():
+    """学生のプロフィールアイコンを変更する。"""
+    if current_type() != "normal_user":
+        return redirect("/leader")
+    icon = request.files.get("icon")
+    if icon and icon.filename:
+        db = get_db()
+        row = db.execute(
+            "SELECT id FROM user WHERE userid = ?", (current_user.id,)
+        ).fetchone()
+        filename = f"user_{row['id']}_icon_{secure_filename(icon.filename)}"
+        icon.save(os.path.join("uploads", filename))
+        db.execute(
+            "UPDATE user SET icon_path = ? WHERE userid = ?",
+            (filename, current_user.id),
+        )
+        db.commit()
+    return redirect("/profile")
 
 
 @app.route("/calendar")
@@ -998,7 +1030,8 @@ def leader_followers():
     db = get_db()
     followers = db.execute(
         """
-        SELECT user.userid AS userid, user.name AS name, user.faculty AS faculty
+        SELECT user.userid AS userid, user.name AS name, user.faculty AS faculty,
+               user.icon_path AS icon_path
           FROM follow_table
           JOIN user ON user.userid = follow_table.user_id
          WHERE follow_table.follow_id = ?
