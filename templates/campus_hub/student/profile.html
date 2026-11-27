@@ -78,6 +78,35 @@
             {% endif %}
         </div>
 
+        <div>
+            <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1"><i class="fa-solid fa-heart mr-1.5 text-red-400"></i>いいねした投稿</h4>
+            {% if liked_posts %}
+            <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                {% for p in liked_posts %}
+                <a href="/post/{{ p.post_id }}" class="p-3 flex items-center gap-3">
+                    {% if p.image_path %}
+                    <img src="/uploads/{{ p.image_path }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200 flex-shrink-0" alt="">
+                    {% elif p.logo_path %}
+                    <img src="/uploads/{{ p.logo_path }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200 flex-shrink-0" alt="">
+                    {% else %}
+                    <span class="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0">{{ (p.circle_name or p.circle_id)[:1] }}</span>
+                    {% endif %}
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-xs font-bold truncate">{{ p.title or p.comment or '（タイトルなし）' }}</span>
+                        <span class="block text-[10px] text-slate-500 truncate">{{ p.circle_name or p.circle_id }}</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+                <p class="text-[11px] font-bold text-slate-400">まだいいねした投稿がありません</p>
+                <a href="/" class="text-[11px] font-bold text-brand-600">ホームで投稿を見る</a>
+            </div>
+            {% endif %}
+        </div>
+
         <a href="/logout" class="w-full bg-white border border-red-200 p-3 rounded-xl flex items-center justify-center gap-2 text-red-500 active:scale-95 transition shadow-sm">
             <i class="fa-solid fa-right-from-bracket"></i><span class="text-xs font-bold">ログアウト</span>
         </a>

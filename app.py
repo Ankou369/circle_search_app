@@ -776,6 +776,21 @@ def profile():
                 "logo_path": info["logo_path"] if info else None,
             }
         )
+    liked_posts = db.execute(
+        """
+        SELECT post.id AS post_id, post.title AS title, post.comment AS comment,
+               post.image_path AS image_path, post.userid AS circle_id,
+               (SELECT circle_name FROM circle_info
+                 WHERE circle_info.circle_id = post.userid) AS circle_name,
+               (SELECT logo_path FROM circle_info
+                 WHERE circle_info.circle_id = post.userid) AS logo_path
+          FROM post_like
+          JOIN post ON post.id = post_like.post_id
+         WHERE post_like.user_id = ?
+         ORDER BY post_like.id DESC
+        """,
+        (current_user.id,),
+    ).fetchall()
     return render_template(
         "campus_hub/student/profile.html",
         nav="student",
@@ -783,6 +798,7 @@ def profile():
         student_info=student_info,
         latest_diag=latest_diagnostic(db, current_user.id),
         following_circles=following_circles,
+        liked_posts=liked_posts,
     )
 
 
