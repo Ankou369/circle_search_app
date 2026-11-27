@@ -14,7 +14,10 @@
             <i class="fa-solid fa-heart-pulse text-xl"></i><span class="text-[9px] font-bold">診断</span>
         </a>
         <a href="/chat" class="w-1/6 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'chat' else 'text-slate-400 hover:text-slate-700' }}">
-            <i class="fa-regular fa-comment text-xl"></i><span class="text-[9px] font-bold">チャット</span>
+            <span class="relative">
+                <i class="fa-regular fa-comment text-xl"></i>
+                {% if chat_unread %}<span class="absolute -top-1.5 -right-2.5 min-w-4 h-4 px-0.5 rounded-full bg-red-500 text-white text-[8px] font-black flex items-center justify-center">{{ '99+' if chat_unread > 99 else chat_unread }}</span>{% endif %}
+            </span><span class="text-[9px] font-bold">チャット</span>
         </a>
         <a href="/profile" class="w-1/6 flex flex-col items-center gap-1 {{ 'text-brand-600' if active == 'profile' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-regular fa-user text-xl"></i><span class="text-[9px] font-bold">マイページ</span>

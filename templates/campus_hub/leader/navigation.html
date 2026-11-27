@@ -5,7 +5,10 @@
             <i class="fa-solid fa-house text-xl"></i><span class="text-[9px] font-bold">ホーム</span>
         </a>
         <a href="/chat" class="flex-1 flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-chat' else 'text-slate-400 hover:text-slate-700' }}">
-            <i class="fa-regular fa-comment text-xl"></i><span class="text-[9px] font-bold">チャット</span>
+            <span class="relative">
+                <i class="fa-regular fa-comment text-xl"></i>
+                {% if chat_unread %}<span class="absolute -top-1.5 -right-2.5 min-w-4 h-4 px-0.5 rounded-full bg-red-500 text-white text-[8px] font-black flex items-center justify-center">{{ '99+' if chat_unread > 99 else chat_unread }}</span>{% endif %}
+            </span><span class="text-[9px] font-bold">チャット</span>
         </a>
         <a href="/leader/calendar" class="flex-1 flex flex-col items-center gap-1 {{ 'text-leader-600' if active == 'leader-calendar' else 'text-slate-400 hover:text-slate-700' }}">
             <i class="fa-regular fa-calendar text-xl"></i><span class="text-[9px] font-bold">カレンダー</span>

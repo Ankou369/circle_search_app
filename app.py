@@ -688,6 +688,17 @@ def logout():
 
 ### 学生の画面 ################################
 
+@app.context_processor
+def inject_chat_unread():
+    """全ページの下部バー（チャットタブ）に出す未読件数を共通で渡す。"""
+    if not current_user.is_authenticated:
+        return {"chat_unread": 0}
+    try:
+        return {"chat_unread": chat_unread_count(get_db(), current_user.id)}
+    except Exception:
+        return {"chat_unread": 0}
+
+
 def render_feed(nav, active, can_post=False):
     """ホームのフィード（学生用／サークル用で共用。タブでフォロー中・その他を絞る）。"""
     db = get_db()
