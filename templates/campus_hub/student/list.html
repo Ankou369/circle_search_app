@@ -16,7 +16,7 @@
         </div>
         {% if circles %}
             {% for circle in circles %}
-            <a href="/circle/{{ circle.circle_id }}" class="circle-card bg-white p-3 rounded-xl border border-slate-200 flex gap-3 items-center shadow-sm" data-name="{{ ((circle.circle_name or circle.circle_id) ~ ' ' ~ (circle.activity_details or ''))|lower }}">
+            <a href="/circle/{{ circle.circle_id }}" class="circle-card bg-white p-3 rounded-xl border border-slate-200 flex gap-3 items-center shadow-sm" data-name="{{ ((circle.circle_name or circle.circle_id) ~ ' ' ~ (circle.activity_details or '') ~ ' ' ~ (circle.hashtags or ''))|lower }}">
                 {% if circle.logo_path %}
                 <img src="/uploads/{{ circle.logo_path }}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 flex-shrink-0" alt="{{ circle.circle_name or circle.circle_id }}のロゴ">
                 {% else %}
@@ -25,6 +25,13 @@
                 <div class="flex-1 min-w-0">
                     <h5 class="text-xs font-bold truncate">{{ circle.circle_name or circle.circle_id }}</h5>
                     <p class="text-[10px] text-slate-500 truncate">@{{ circle.circle_id }}</p>
+                    {% if circle.hashtags %}
+                    <p class="mt-1 flex flex-wrap gap-1">
+                        {% for tag in circle.hashtags.split(' ') %}
+                        <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">#{{ tag }}</span>
+                        {% endfor %}
+                    </p>
+                    {% endif %}
                 </div>
                 {% if circle.category %}
                 <span class="text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 {{ 'bg-orange-50 text-orange-500' if circle.category == 'sports' else 'bg-violet-50 text-violet-500' }}">{{ categories[circle.category] }}</span>

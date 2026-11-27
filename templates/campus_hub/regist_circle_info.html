@@ -38,6 +38,12 @@
                 </select>
             </div>
             <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">ハッシュタグ（一覧の検索でヒットします）</label>
+                <input type="text" name="hashtags" value="{{ circle_info.hashtags if circle_info and circle_info.hashtags else '' }}" placeholder="例: 音楽系 バスケ系 初心者歓迎"
+                       class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                <p class="text-[9px] text-slate-400 mt-1">スペース区切りで最大10個まで。「#」は付けても付けなくても大丈夫です</p>
+            </div>
+            <div>
                 <label class="block text-[10px] font-bold text-slate-500 mb-1">活動時間</label>
                 <input type="text" name="circle_time" value="{{ circle_info.circle_time if circle_info else '' }}" placeholder="例: 毎週火・金 18:00〜20:00"
                        class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">

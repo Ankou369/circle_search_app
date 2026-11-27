@@ -148,12 +148,13 @@ def init_db():
             activity_start TEXT,
             activity_end TEXT,
             logo_path TEXT,
-            category TEXT
+            category TEXT,
+            hashtags TEXT
         )
     """)
     # 既存のDB（列追加前に作られたもの）に不足列を足す
     existing_cols = [row[1] for row in db.execute("PRAGMA table_info(circle_info)")]
-    for col in ("activity_weekdays", "activity_start", "activity_end", "logo_path", "category"):
+    for col in ("activity_weekdays", "activity_start", "activity_end", "logo_path", "category", "hashtags"):
         if col not in existing_cols:
             db.execute(f"ALTER TABLE circle_info ADD COLUMN {col} TEXT")
     # 既存のDBの user テーブルにも学生アイコン用の列を足す
@@ -446,6 +447,21 @@ def get_follow_list(db, user_id):
     return [row[0] for row in rows]
 
 
+def parse_hashtags(raw):
+    """ハッシュタグ入力を正規化する（区切りは空白・読点・カンマ、#は有無どちらでも可）。
+
+    重複を除いて最大10個、各20文字までに整えたリストを返す。
+    """
+    if not raw:
+        return []
+    tags = []
+    for part in raw.replace("、", " ").replace(",", " ").replace("，", " ").split():
+        tag = part.lstrip("#").strip()
+        if tag and tag not in tags:
+            tags.append(tag[:20])
+    return tags[:10]
+
+
 def get_circles(db):
     return db.execute("""
         SELECT circle_account.circle_id AS circle_id,
@@ -456,7 +472,9 @@ def get_circles(db):
                (SELECT logo_path FROM circle_info
                  WHERE circle_info.circle_id = circle_account.circle_id) AS logo_path,
                (SELECT category FROM circle_info
-                 WHERE circle_info.circle_id = circle_account.circle_id) AS category
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS category,
+               (SELECT hashtags FROM circle_info
+                 WHERE circle_info.circle_id = circle_account.circle_id) AS hashtags
           FROM circle_account ORDER BY circle_account.id
     """).fetchall()
 
@@ -1426,6 +1444,7 @@ def regist_circle_info(circle_id):
         circle_time = request.form.get("circle_time")
         circle_place = request.form.get("circle_place")
         activity_details = request.form.get("activity_details")
+        hashtags = " ".join(parse_hashtags(request.form.get("hashtags"))) or None
         # 活動スケジュール（曜日は "1,4" のようなカンマ区切りで保存する）
         weekdays = sorted({int(d) for d in request.form.getlist("weekdays") if d.isdigit()})
         activity_weekdays = ",".join(str(d) for d in weekdays)
@@ -1447,22 +1466,24 @@ def regist_circle_info(circle_id):
                 UPDATE circle_info
                    SET circle_name = ?, circle_time = ?, circle_place = ?,
                        activity_details = ?, activity_weekdays = ?,
-                       activity_start = ?, activity_end = ?, category = ?
+                       activity_start = ?, activity_end = ?, category = ?,
+                       hashtags = ?
                  WHERE circle_id = ?
                 """,
                 (circle_name, circle_time, circle_place, activity_details,
-                 activity_weekdays, activity_start, activity_end, category, circle_id),
+                 activity_weekdays, activity_start, activity_end, category,
+                 hashtags, circle_id),
             )
         else:
             db.execute(
                 """
                 INSERT INTO circle_info
                     (circle_id, circle_name, circle_time, circle_place, activity_details,
-                     activity_weekdays, activity_start, activity_end, category)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     activity_weekdays, activity_start, activity_end, category, hashtags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (circle_id, circle_name, circle_time, circle_place, activity_details,
-                 activity_weekdays, activity_start, activity_end, category),
+                 activity_weekdays, activity_start, activity_end, category, hashtags),
             )
         if logo_path:
             db.execute(

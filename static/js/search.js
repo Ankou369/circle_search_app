@@ -3,8 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('circle-search-input');
     if (!input) return;
 
-    input.addEventListener('input', () => {
-        const keyword = input.value.trim().toLowerCase();
+    const filter = () => {
+        // 「#音楽系」でも「音楽系」でもヒットするよう、#は取り除いて比べる
+        const keyword = input.value.trim().toLowerCase().replace(/#/g, '');
         let visible = 0;
 
         document.querySelectorAll('.circle-card').forEach(card => {
@@ -18,5 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (noResult) {
             noResult.classList.toggle('hidden', visible !== 0);
         }
-    });
+    };
+
+    input.addEventListener('input', filter);
+
+    // 詳細ページのハッシュタグから来たとき（/list?q=音楽系）は最初から絞り込む
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) {
+        input.value = q;
+        filter();
+    }
 });

@@ -53,6 +53,13 @@
             {% else %}
             <p class="text-xs text-slate-400">まだ情報が登録されていません</p>
             {% endif %}
+            {% if circle_info and circle_info.hashtags %}
+            <div class="mt-3 flex flex-wrap gap-1.5">
+                {% for tag in circle_info.hashtags.split(' ') %}
+                <a href="/list?q={{ tag }}" class="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-full">#{{ tag }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
 
         {% if faculty_stats %}
