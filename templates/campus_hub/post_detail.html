@@ -17,7 +17,7 @@
                 {% endif %}
                 <div class="flex-1 min-w-0">
                     <a href="/circle/{{ post.userid }}" class="text-xs font-bold truncate block">{{ post.display_name or post.name or post.userid }}</a>
-                    <p class="text-[10px] text-slate-400">@{{ post.userid }}</p>
+                    <p class="text-[10px] text-slate-400">@{{ post.userid }}{% if post.created_at %} ・ {{ post.created_at.replace('-', '/') }}{% endif %}</p>
                 </div>
                 {% if current_user.id != post.userid %}
                 <form action="/follow" method="POST" class="m-0">

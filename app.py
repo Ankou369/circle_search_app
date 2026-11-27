@@ -124,7 +124,8 @@ def init_db():
             name TEXT,
             title TEXT,
             comment TEXT,
-            image_path TEXT
+            image_path TEXT,
+            created_at TEXT
         )
     """)
     # フォロー関係
@@ -161,6 +162,10 @@ def init_db():
     user_cols = [row[1] for row in db.execute("PRAGMA table_info(user)")]
     if "icon_path" not in user_cols:
         db.execute("ALTER TABLE user ADD COLUMN icon_path TEXT")
+    # 既存のDBの post テーブルにも投稿日時用の列を足す
+    post_cols = [row[1] for row in db.execute("PRAGMA table_info(post)")]
+    if post_cols and "created_at" not in post_cols:
+        db.execute("ALTER TABLE post ADD COLUMN created_at TEXT")
     # サークルの学部別人数
     db.execute("""
         CREATE TABLE IF NOT EXISTS circle_number_of_students (
@@ -1268,8 +1273,10 @@ def post():
         image_path = filename
     db = get_db()
     db.execute(
-        "INSERT INTO post (userid, name, title, comment, image_path) VALUES (?, ?, ?, ?, ?)",
-        (current_user.id, name, title, comment, image_path),
+        "INSERT INTO post (userid, name, title, comment, image_path, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        (current_user.id, name, title, comment, image_path,
+         datetime.now().strftime("%Y-%m-%d %H:%M")),
     )
     db.commit()
     return redirect(request.referrer or "/leader")
