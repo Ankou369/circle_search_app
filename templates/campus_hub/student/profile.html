@@ -45,12 +45,27 @@
         {% endif %}
 
         <div>
-            <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1"><i class="fa-regular fa-thumbs-up mr-1.5"></i>いいねしたサークル</h4>
+            <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1"><i class="fa-solid fa-user-check mr-1.5"></i>フォローしているサークル</h4>
+            {% if following_circles %}
             <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-                <div class="p-3 text-xs font-medium flex items-center justify-between">
-                    <span>体育会サッカー部</span><i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
-                </div>
+                {% for c in following_circles %}
+                <a href="/circle/{{ c.circle_id }}" class="p-3 text-xs font-medium flex items-center gap-3">
+                    {% if c.logo_path %}
+                    <img src="/uploads/{{ c.logo_path }}" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="">
+                    {% else %}
+                    <span class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 flex-shrink-0">{{ c.circle_name[:1] }}</span>
+                    {% endif %}
+                    <span class="flex-1">{{ c.circle_name }}</span>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                </a>
+                {% endfor %}
             </div>
+            {% else %}
+            <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+                <p class="text-[11px] font-bold text-slate-400">まだフォローしているサークルがありません</p>
+                <a href="/list" class="text-[11px] font-bold text-brand-600">サークル一覧から探す</a>
+            </div>
+            {% endif %}
         </div>
 
         <a href="/logout" class="w-full bg-white border border-red-200 p-3 rounded-xl flex items-center justify-center gap-2 text-red-500 active:scale-95 transition shadow-sm">

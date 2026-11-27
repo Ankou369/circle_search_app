@@ -722,12 +722,26 @@ def profile():
     student_info = db.execute(
         "SELECT name, faculty FROM user WHERE userid = ?", (current_user.id,)
     ).fetchone()
+    following_circles = []
+    for circle_id in get_follow_list(db, current_user.id):
+        info = db.execute(
+            "SELECT circle_name, logo_path FROM circle_info WHERE circle_id = ?",
+            (circle_id,),
+        ).fetchone()
+        following_circles.append(
+            {
+                "circle_id": circle_id,
+                "circle_name": info["circle_name"] if info and info["circle_name"] else circle_id,
+                "logo_path": info["logo_path"] if info else None,
+            }
+        )
     return render_template(
         "campus_hub/student/profile.html",
         nav="student",
         active="profile",
         student_info=student_info,
         latest_diag=latest_diagnostic(db, current_user.id),
+        following_circles=following_circles,
     )
 
 
