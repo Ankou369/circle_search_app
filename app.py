@@ -252,6 +252,19 @@ def init_db():
             created_at TEXT
         )
     """)
+    # サークルが登録する単発イベント（通常の活動日とは別の日程もの）
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS circle_event (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            circle_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            start_time TEXT,
+            end_time TEXT,
+            place TEXT,
+            created_at TEXT
+        )
+    """)
     db.commit()
     db.close()
 
@@ -829,6 +842,37 @@ def my_calendar():
         days = {int(d) for d in row["activity_weekdays"].split(",") if d.strip().isdigit()}
         if days:
             schedules.append((row, days))
+    # フォロー中サークルの単発イベント（この月の分を日ごとに引けるようにする）
+    one_offs = {}
+    followed_ids = [row["circle_id"] for row in followed]
+    if followed_ids:
+        placeholders = ", ".join("?" for _ in followed_ids)
+        event_rows = db.execute(
+            f"""
+            SELECT circle_event.*, circle_info.circle_name AS circle_name
+              FROM circle_event
+              LEFT JOIN circle_info ON circle_info.circle_id = circle_event.circle_id
+             WHERE circle_event.circle_id IN ({placeholders})
+               AND circle_event.event_date LIKE ?
+             ORDER BY circle_event.event_date, circle_event.start_time
+            """,
+            (*followed_ids, f"{year:04d}-{month:02d}%"),
+        ).fetchall()
+        for r in event_rows:
+            try:
+                event_day = date.fromisoformat(r["event_date"]).day
+            except (TypeError, ValueError):
+                continue
+            one_offs.setdefault(event_day, []).append(
+                {
+                    "circle_id": r["circle_id"],
+                    "name": r["circle_name"] or r["circle_id"],
+                    "title": r["title"],
+                    "start": r["start_time"],
+                    "end": r["end_time"],
+                    "place": r["place"],
+                }
+            )
     weeks = []
     month_events = []
     for week in monthcalendar(year, month):
@@ -842,6 +886,7 @@ def my_calendar():
                 {
                     "circle_id": row["circle_id"],
                     "name": row["circle_name"] or row["circle_id"],
+                    "title": None,
                     "start": row["activity_start"],
                     "end": row["activity_end"],
                     "place": row["circle_place"],
@@ -849,6 +894,7 @@ def my_calendar():
                 for row, days in schedules
                 if current.weekday() in days
             ]
+            events += one_offs.get(day_num, [])
             cells.append(
                 {"day": day_num, "events": events, "is_today": current == today}
             )
@@ -870,6 +916,128 @@ def my_calendar():
         next_ym=f"{next_year}-{next_month:02d}",
         has_follows=len(followed) > 0,
     )
+
+
+### サークル側カレンダー（通常の活動日＋単発イベントの登録） ##########
+
+@app.route("/leader/calendar")
+@login_required
+def leader_calendar():
+    if current_type() != "circle_user":
+        return redirect("/calendar")
+    today = date.today()
+    ym = request.args.get("ym", "")
+    try:
+        year, month = (int(part) for part in ym.split("-"))
+        date(year, month, 1)
+    except (ValueError, AttributeError):
+        year, month = today.year, today.month
+    db = get_db()
+    info = db.execute(
+        "SELECT * FROM circle_info WHERE circle_id = ?", (current_user.id,)
+    ).fetchone()
+    weekly_days = set()
+    if info and info["activity_weekdays"]:
+        weekly_days = {
+            int(d) for d in info["activity_weekdays"].split(",") if d.strip().isdigit()
+        }
+    event_rows = db.execute(
+        """
+        SELECT * FROM circle_event
+         WHERE circle_id = ? AND event_date LIKE ?
+         ORDER BY event_date, start_time
+        """,
+        (current_user.id, f"{year:04d}-{month:02d}%"),
+    ).fetchall()
+    one_offs = {}
+    for r in event_rows:
+        try:
+            day_num = date.fromisoformat(r["event_date"]).day
+        except (TypeError, ValueError):
+            continue
+        one_offs.setdefault(day_num, []).append(r)
+    weeks = []
+    for week in monthcalendar(year, month):
+        cells = []
+        for day_num in week:
+            if day_num == 0:
+                cells.append(None)
+                continue
+            current = date(year, month, day_num)
+            cells.append(
+                {
+                    "day": day_num,
+                    "is_today": current == today,
+                    "weekly": current.weekday() in weekly_days,
+                    "events": one_offs.get(day_num, []),
+                }
+            )
+        weeks.append(cells)
+    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+    next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return render_template(
+        "campus_hub/leader/calendar.html",
+        nav="leader",
+        active="leader-calendar",
+        year=year,
+        month=month,
+        weeks=weeks,
+        month_events=event_rows,
+        weekday_labels=[label for _num, label in WEEKDAYS],
+        prev_ym=f"{prev_year}-{prev_month:02d}",
+        next_ym=f"{next_year}-{next_month:02d}",
+        weekly_start=info["activity_start"] if info else None,
+        weekly_end=info["activity_end"] if info else None,
+        error=request.args.get("error"),
+    )
+
+
+@app.route("/leader/calendar/events", methods=["POST"])
+@login_required
+def leader_event_create():
+    if current_type() != "circle_user":
+        return redirect("/")
+    title = (request.form.get("title") or "").strip()
+    event_date = (request.form.get("event_date") or "").strip()
+    try:
+        parsed = date.fromisoformat(event_date)
+    except ValueError:
+        parsed = None
+    if not title or parsed is None:
+        return redirect("/leader/calendar?error=1")
+    db = get_db()
+    db.execute(
+        "INSERT INTO circle_event (circle_id, title, event_date, start_time, end_time, place, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            current_user.id,
+            title,
+            parsed.isoformat(),
+            request.form.get("start_time") or None,
+            request.form.get("end_time") or None,
+            (request.form.get("place") or "").strip() or None,
+            datetime.now().strftime("%Y-%m-%d %H:%M"),
+        ),
+    )
+    db.commit()
+    return redirect(f"/leader/calendar?ym={parsed.year:04d}-{parsed.month:02d}")
+
+
+@app.route("/leader/calendar/events/<int:event_id>/delete", methods=["POST"])
+@login_required
+def leader_event_delete(event_id):
+    if current_type() != "circle_user":
+        return redirect("/")
+    db = get_db()
+    row = db.execute(
+        "SELECT event_date FROM circle_event WHERE id = ? AND circle_id = ?",
+        (event_id, current_user.id),
+    ).fetchone()
+    if row:
+        db.execute("DELETE FROM circle_event WHERE id = ?", (event_id,))
+        db.commit()
+        return redirect(f"/leader/calendar?ym={row['event_date'][:7]}")
+    return redirect("/leader/calendar")
 
 
 @app.route("/diagnostic")
@@ -1412,10 +1580,20 @@ def circle_account(circle_id):
         faculty_stats = [
             (label, students_row[col] or 0) for col, label in FACULTIES
         ]
+    upcoming_events = db.execute(
+        """
+        SELECT * FROM circle_event
+         WHERE circle_id = ? AND event_date >= ?
+         ORDER BY event_date, start_time
+         LIMIT 10
+        """,
+        (circle_id, date.today().isoformat()),
+    ).fetchall()
     return render_template(
         "campus_hub/circle_detail.html",
         schedule_text=schedule_text(circle_info),
         faculty_stats=faculty_stats,
+        upcoming_events=upcoming_events,
         faculty_total=sum(count for _label, count in faculty_stats),
         circle=circle,
         circle_name=circle_display_name(db, circle_id),

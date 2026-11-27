@@ -1,0 +1,93 @@
+{% extends "campus_hub/layout.html" %}
+{% block page %}
+<!-- 幹部用カレンダー: 通常の活動日＋単発イベントの登録・管理 -->
+<div class="flex-1 flex flex-col bg-slate-50 fade-in">
+    <div class="bg-slate-950 text-white p-3 border-b border-slate-800 sticky top-0 z-20 flex items-center justify-between">
+        <a href="/leader/calendar?ym={{ prev_ym }}" class="text-slate-300 px-2"><i class="fa-solid fa-chevron-left"></i></a>
+        <h3 class="text-sm font-bold">{{ year }}年 {{ month }}月</h3>
+        <a href="/leader/calendar?ym={{ next_ym }}" class="text-slate-300 px-2"><i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+    <div class="flex-1 p-3 pb-24 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
+            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
+                {% for label in weekday_labels %}<div>{{ label }}</div>{% endfor %}
+            </div>
+            {% for week in weeks %}
+            <div class="grid grid-cols-7">
+                {% for cell in week %}
+                <div class="min-h-14 p-1 border-t border-slate-100">
+                    {% if cell %}
+                    <div class="text-[10px] font-bold {{ 'text-white bg-leader-600 rounded-full w-4 h-4 flex items-center justify-center' if cell.is_today else 'text-slate-600' }}">{{ cell.day }}</div>
+                    {% if cell.weekly %}
+                    <span class="block mt-0.5 text-[8px] font-bold bg-leader-50 text-leader-700 rounded px-1 py-0.5 truncate">活動日{% if weekly_start %} {{ weekly_start }}{% if weekly_end %}〜{{ weekly_end }}{% endif %}{% endif %}</span>
+                    {% endif %}
+                    {% for event in cell.events %}
+                    <span class="block mt-0.5 text-[8px] font-bold bg-amber-50 text-amber-700 rounded px-1 py-0.5 truncate">{{ event.title }}</span>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+            <p class="text-[9px] text-slate-400 mt-2">活動日はサークル情報で登録した曜日の繰り返し表示です。その他の予定は下のフォームから登録できます</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <h4 class="text-xs font-bold text-slate-800 mb-3"><i class="fa-solid fa-calendar-plus text-leader-600 mr-1.5"></i>イベントを登録する</h4>
+            {% if error %}
+            <p class="mb-3 text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">タイトルと日付を入力してください</p>
+            {% endif %}
+            <form method="POST" action="/leader/calendar/events" class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1">タイトル</label>
+                    <input type="text" name="title" placeholder="例: 新歓ライブ、体験会" class="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1">日付</label>
+                    <input type="date" name="event_date" class="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm" required>
+                </div>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">開始（任意）</label>
+                        <input type="time" name="start_time" class="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">終了（任意）</label>
+                        <input type="time" name="end_time" class="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1">場所（任意）</label>
+                    <input type="text" name="place" placeholder="例: 文教キャンパス 音楽練習室" class="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-leader-600 text-white font-bold text-sm py-2.5 rounded-xl active:scale-95 transition">登録する</button>
+            </form>
+        </div>
+
+        <div>
+            <h4 class="text-[11px] font-bold text-slate-500 mb-2 px-1">{{ month }}月のイベント</h4>
+            {% if month_events %}
+            <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                {% for event in month_events %}
+                <div class="p-3 flex items-center gap-3">
+                    <div class="text-center w-10 flex-shrink-0">
+                        <div class="text-sm font-black text-slate-800">{{ event.event_date[8:]|int }}</div>
+                        <div class="text-[9px] font-bold text-slate-400">{{ event.event_date[5:7]|int }}月</div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h5 class="text-xs font-bold truncate">{{ event.title }}</h5>
+                        <p class="text-[10px] text-slate-500 truncate">{% if event.start_time %}{{ event.start_time }}{% if event.end_time %}〜{{ event.end_time }}{% endif %}{% endif %}{% if event.place %} ・ {{ event.place }}{% endif %}</p>
+                    </div>
+                    <form method="POST" action="/leader/calendar/events/{{ event.id }}/delete">
+                        <button type="submit" class="text-[10px] font-bold text-red-500 bg-red-50 px-2.5 py-1.5 rounded-full">削除</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-center text-xs font-bold text-slate-400 py-6">今月のイベントはまだ登録されていません</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -20,7 +20,7 @@
                     {% if cell %}
                     <div class="text-[10px] font-bold {{ 'text-white bg-brand-600 rounded-full w-4 h-4 flex items-center justify-center' if cell.is_today else 'text-slate-600' }}">{{ cell.day }}</div>
                     {% for event in cell.events %}
-                    <button type="button" data-event data-name="{{ event.name }}" data-date="{{ month }}月{{ cell.day }}日（{{ weekday_labels[wd] }}）" data-time="{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% else %}時間未定{% endif %}" data-place="{{ event.place or '' }}" data-url="/circle/{{ event.circle_id }}" class="block w-full text-left mt-0.5 text-[8px] font-bold bg-brand-50 text-brand-700 rounded px-1 py-0.5 truncate">{{ event.name }}</button>
+                    <button type="button" data-event data-name="{{ event.name }}" data-title="{{ event.title or '' }}" data-date="{{ month }}月{{ cell.day }}日（{{ weekday_labels[wd] }}）" data-time="{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% else %}時間未定{% endif %}" data-place="{{ event.place or '' }}" data-url="/circle/{{ event.circle_id }}" class="block w-full text-left mt-0.5 text-[8px] font-bold rounded px-1 py-0.5 truncate {{ 'bg-amber-50 text-amber-700' if event.title else 'bg-brand-50 text-brand-700' }}">{{ event.title or event.name }}</button>
                     {% endfor %}
                     {% endif %}
                 </div>
@@ -34,14 +34,14 @@
             {% if month_events %}
             <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
                 {% for event in month_events %}
-                <button type="button" data-event data-name="{{ event.name }}" data-date="{{ event.date.month }}月{{ event.date.day }}日（{{ weekday_labels[event.date.weekday()] }}）" data-time="{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% else %}時間未定{% endif %}" data-place="{{ event.place or '' }}" data-url="/circle/{{ event.circle_id }}" class="p-3 flex items-center gap-3 w-full text-left">
+                <button type="button" data-event data-name="{{ event.name }}" data-title="{{ event.title or '' }}" data-date="{{ event.date.month }}月{{ event.date.day }}日（{{ weekday_labels[event.date.weekday()] }}）" data-time="{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% else %}時間未定{% endif %}" data-place="{{ event.place or '' }}" data-url="/circle/{{ event.circle_id }}" class="p-3 flex items-center gap-3 w-full text-left">
                     <div class="text-center w-10 flex-shrink-0">
                         <div class="text-sm font-black text-slate-800">{{ event.date.day }}</div>
                         <div class="text-[9px] font-bold text-slate-400">{{ weekday_labels[event.date.weekday()] }}曜</div>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h5 class="text-xs font-bold truncate">{{ event.name }}</h5>
-                        <p class="text-[10px] text-slate-500 truncate">{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% endif %}{% if event.place %} ・ {{ event.place }}{% endif %}</p>
+                        <h5 class="text-xs font-bold truncate">{{ event.title or event.name }}</h5>
+                        <p class="text-[10px] text-slate-500 truncate">{% if event.title %}{{ event.name }} ・ {% endif %}{% if event.start %}{{ event.start }}{% if event.end %}〜{{ event.end }}{% endif %}{% endif %}{% if event.place %} ・ {{ event.place }}{% endif %}</p>
                     </div>
                     <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
                 </button>
@@ -67,6 +67,7 @@
         <button type="button" id="event-popup-close" class="absolute top-2.5 right-3 text-slate-300 text-base"><i class="fa-solid fa-xmark"></i></button>
         <div class="text-3xl mb-2">📅</div>
         <h3 id="event-popup-name" class="text-sm font-black text-slate-800"></h3>
+        <p id="event-popup-title" class="text-xs font-black text-amber-600 mt-1"></p>
         <p id="event-popup-date" class="text-xs font-bold text-brand-600 mt-1.5"></p>
         <p id="event-popup-time" class="text-xs text-slate-500 mt-0.5"></p>
         <p id="event-popup-place" class="text-xs text-slate-500 mt-0.5"></p>
@@ -91,6 +92,7 @@
     document.querySelectorAll('[data-event]').forEach(function (el) {
         el.addEventListener('click', function () {
             document.getElementById('event-popup-name').textContent = el.dataset.name;
+            document.getElementById('event-popup-title').textContent = el.dataset.title || '';
             document.getElementById('event-popup-date').textContent = el.dataset.date;
             document.getElementById('event-popup-time').textContent = el.dataset.time;
             var place = document.getElementById('event-popup-place');

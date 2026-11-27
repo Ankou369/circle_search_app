@@ -37,10 +37,12 @@ flowchart TD
     subgraph leader ["サークル幹部"]
         DASH["/leader ダッシュボード"]
         LFEED["/leader/home ホーム（フィード＋新歓投稿）"]
+        LCAL["/leader/calendar 幹部カレンダー（イベント登録）"]
         FOL["/leader/followers フォロワー一覧"]
         SET["/leader/settings 設定"]
         DASH <--> SET
         DASH <--> LFEED
+        DASH <--> LCAL
         DASH --> FOL
         FOL --> DASH
     end
